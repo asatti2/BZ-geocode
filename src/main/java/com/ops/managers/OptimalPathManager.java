@@ -1,10 +1,12 @@
 package com.ops.managers;
 
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ops.constants.URLConstants;
 import com.ops.dto.WaypointTO;
+import com.ops.dto.geodtos.ResponseGeoDto;
 import com.ops.utils.HttpConnectorUtil;
 
 public class OptimalPathManager {
@@ -20,7 +22,14 @@ public class OptimalPathManager {
 		for(String waypoint : waypointTO.getWaypoints())
 			paramBuilder.append("|").append(waypoint);
 
-		String response = HttpConnectorUtil.callAPI(URLConstants.WAYPOINT_URL, paramBuilder.toString());
-		return response;
+		String resp = HttpConnectorUtil.callAPI(URLConstants.WAYPOINT_URL, paramBuilder.toString());
+		
+		JSONObject obj = new JSONObject(resp);
+		//ResponseGeoDto geoDto = new ResponseGeoDto();
+		//geoDto.setGeocoded_waypoints(obj.getJSONArray("geocoded_waypoints").);
+		System.out.println("geoWayPoints: " + obj.getJSONArray("geocoded_waypoints"));
+		System.out.println("routes: " + obj.getJSONArray("routes"));
+
+		return resp;
 	}
 }
