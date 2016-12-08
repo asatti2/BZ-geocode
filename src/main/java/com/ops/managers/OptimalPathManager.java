@@ -6,7 +6,6 @@ import org.slf4j.LoggerFactory;
 
 import com.ops.constants.URLConstants;
 import com.ops.dto.WaypointTO;
-import com.ops.dto.geodtos.ResponseGeoDto;
 import com.ops.utils.HttpConnectorUtil;
 
 public class OptimalPathManager {
