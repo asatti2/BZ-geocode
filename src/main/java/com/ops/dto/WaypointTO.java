@@ -9,6 +9,30 @@ public class WaypointTO implements Serializable {
 	private String origin;
 	private String destination;
 	private String[] waypoints;
+	private int distance;
+	private int weight;
+	
+	
+
+	public int getDistance() {
+		return distance;
+	}
+
+	public void setDistance(int distance) {
+		this.distance = distance;
+	}
+
+	public int getWeight() {
+		return weight;
+	}
+
+	public void setWeight(int weight) {
+		this.weight = weight;
+	}
+
+	public static long getSerialversionuid() {
+		return serialVersionUID;
+	}
 
 	public WaypointTO() {
 	}

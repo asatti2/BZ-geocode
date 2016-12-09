@@ -55,7 +55,7 @@ public class OptimalPathController extends ResponseController {
 			waypointTO.setDestination("Chakkarpur,+Gurgaon,+Haryana");
 			String[] waypoints = new String[] { "MGF+Metropolitan+Mall,+Gurgaon,+Haryana", "IFFCO+Colony,+Gurgaon,+Haryana" };
 			waypointTO.setWaypoints(waypoints);*/
-			List<ResourceTO> resources = new CostCalculatorManager().costCalculate(distance, weight);
+			List<ResourceTO> resources = new CostCalculatorManager().costCalculate(waypointTO.getDistance(), waypointTO.getWeight());
 			JSONArray resourceArray = new JSONArray();
 			JSONObject resourceObject = null;
 			for(ResourceTO resource : resources) {
