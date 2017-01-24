@@ -23,11 +23,11 @@ public class OptimalPathManager {
 
 		String resp = HttpConnectorUtil.callAPI(URLConstants.WAYPOINT_URL, paramBuilder.toString());
 		
-		JSONObject obj = new JSONObject(resp);
+		//JSONObject obj = new JSONObject(resp);
 		//ResponseGeoDto geoDto = new ResponseGeoDto();
 		//geoDto.setGeocoded_waypoints(obj.getJSONArray("geocoded_waypoints").);
-		System.out.println("geoWayPoints: " + obj.getJSONArray("geocoded_waypoints"));
-		System.out.println("routes: " + obj.getJSONArray("routes"));
+		//System.out.println("geoWayPoints: " + obj.getJSONArray("geocoded_waypoints"));
+		//System.out.println("routes: " + obj.getJSONArray("routes"));
 
 		return resp;
 	}
