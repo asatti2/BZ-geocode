@@ -17,7 +17,8 @@ public class OptimalPathManager {
 		StringBuilder paramBuilder = new StringBuilder();
 		paramBuilder.append("origin=").append(waypointTO.getOrigin())
 			.append("&destination=").append(waypointTO.getDestination())
-			.append("&key=").append("AIzaSyBkWZm8-vZFPGhz26LzEiMwmAVwERHA0Q8")
+			//.append("&key=").append("AIzaSyBkWZm8-vZFPGhz26LzEiMwmAVwERHA0Q8")
+			.append("&key=").append("AIzaSyA4IRXdUQM_gZ6KEQ9K_BKBZ5yYa2nQwO4")
 			.append("&waypoints=optimize:true");
 		for(String waypoint : waypointTO.getWaypoints())
 			paramBuilder.append("|").append(waypoint);
