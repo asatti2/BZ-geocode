@@ -13,7 +13,9 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.ops.constants.ApplicationConstants;
+import com.ops.dto.DealerDeliveryTO;
 import com.ops.dto.ResourceTO;
+import com.ops.dto.TripTO;
 import com.ops.dto.WaypointTO;
 import com.ops.exceptions.ApplicationException;
 import com.ops.managers.CostCalculatorManager;
@@ -30,11 +32,6 @@ public class OptimalPathController extends ResponseController {
 		String response = null;
 		try {
 			logger.info("-- Calling Waypoint API --");
-			/*WaypointTO waypointTO = new WaypointTO();
-			waypointTO.setOrigin("Sukhrali,+Gurgaon,+Haryana");
-			waypointTO.setDestination("Chakkarpur,+Gurgaon,+Haryana");
-			String[] waypoints = new String[] { "MGF+Metropolitan+Mall,+Gurgaon,+Haryana", "IFFCO+Colony,+Gurgaon,+Haryana" };
-			waypointTO.setWaypoints(waypoints);*/
 			response = new OptimalPathManager().getWaypointLocation(waypointTO);
 			logger.info("Response - " + response.toString());
 		} catch (Exception ae) {
@@ -50,11 +47,6 @@ public class OptimalPathController extends ResponseController {
 		String response = null;
 		try {
 			logger.info("-- Calling Waypoint API --");
-			/*WaypointTO waypointTO = new WaypointTO();
-			waypointTO.setOrigin("Sukhrali,+Gurgaon,+Haryana");
-			waypointTO.setDestination("Chakkarpur,+Gurgaon,+Haryana");
-			String[] waypoints = new String[] { "MGF+Metropolitan+Mall,+Gurgaon,+Haryana", "IFFCO+Colony,+Gurgaon,+Haryana" };
-			waypointTO.setWaypoints(waypoints);*/
 			List<ResourceTO> resources = new CostCalculatorManager().costCalculate(waypointTO.getDistance(), waypointTO.getWeight());
 			JSONArray resourceArray = new JSONArray();
 			JSONObject resourceObject = null;
@@ -72,5 +64,21 @@ public class OptimalPathController extends ResponseController {
 		}
 
 		return response;
+	}
+	
+	@RequestMapping(value = ApplicationConstants.OPTIMAL_PATH, method = RequestMethod.POST)
+	public List<TripTO> getDealersDeliveryOptimalPath(@RequestBody DealerDeliveryTO dealerDeliveryTO)  throws ApplicationException{
+		String response = null;
+		List<TripTO> trips = null;
+		try {
+			logger.info("-- Calling Optimal Path API --");
+			dealerDeliveryTO.setLunchTime(0.5);
+			trips = new OptimalPathManager().processTrips(dealerDeliveryTO);
+		} catch (Exception ae) {
+			logger.error("Exception occurred in getWaypointLocation() at controller layer - "+ae);
+			throw ae;
+		}
+
+		return trips;
 	}
 }

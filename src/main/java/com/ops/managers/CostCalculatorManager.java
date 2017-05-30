@@ -32,7 +32,6 @@ public class CostCalculatorManager {
 				}
 			}
 		}
-
 		if(weight>0) {
 			int number = 0;
 			if(weight < resourceList.get(resourceList.size() - 1).getCapecity())

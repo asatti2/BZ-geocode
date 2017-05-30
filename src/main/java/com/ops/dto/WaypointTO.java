@@ -1,17 +1,16 @@
 package com.ops.dto;
 
 import java.io.Serializable;
-import java.util.Arrays;
+import java.util.List;
 
 public class WaypointTO implements Serializable {
 	private static final long serialVersionUID = 1L;
 
 	private String origin;
 	private String destination;
-	private String[] waypoints;
+	private List<String> waypoints;
 	private int distance;
-	private int weight;
-	
+	private int weight;	
 	
 
 	public int getDistance() {
@@ -53,16 +52,13 @@ public class WaypointTO implements Serializable {
 		this.destination = destination;
 	}
 
-	public String[] getWaypoints() {
+	public List<String> getWaypoints() {
 		return waypoints;
 	}
 
-	public void setWaypoints(String[] waypoints) {
+	public void setWaypoints(List<String> waypoints) {
 		this.waypoints = waypoints;
 	}
-
-	@Override
-	public String toString() {
-		return "WaypointTO [origin=" + origin + ", destination=" + destination + ", waypoints=" + Arrays.toString(waypoints) + "]";
-	}
+	
+	
 }

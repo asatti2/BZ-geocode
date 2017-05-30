@@ -7,6 +7,7 @@ public interface ApplicationConstants {
 	String TEST_URI = "/test";
 	String WAYPOINT_URL = "/waypoint";
 	String COST_CALCULATE_URL = "/costCalculate";
+	String OPTIMAL_PATH = "/optimalPath";
 
 	String RESP_ERROR = "resp.error";
 }
