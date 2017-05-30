@@ -72,7 +72,7 @@ public class OptimalPathController extends ResponseController {
 		List<TripTO> trips = null;
 		try {
 			logger.info("-- Calling Optimal Path API --");
-			dealerDeliveryTO.setLunchTime(0.5);
+			//dealerDeliveryTO.setLunchTime(0.5);
 			trips = new OptimalPathManager().processTrips(dealerDeliveryTO);
 		} catch (Exception ae) {
 			logger.error("Exception occurred in getWaypointLocation() at controller layer - "+ae);
