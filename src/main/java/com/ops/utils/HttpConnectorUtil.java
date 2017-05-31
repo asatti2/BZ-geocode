@@ -31,7 +31,7 @@ public class HttpConnectorUtil {
 			}
 			in.close();
 		} catch(Exception ex) {
-			ex.printStackTrace();
+			//ex.printStackTrace();
 		}
 
 		logger.info("Response - "+response.toString());

@@ -13,11 +13,13 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.ops.constants.ApplicationConstants;
+import com.ops.constants.ResultType;
 import com.ops.dto.DealerDeliveryTO;
 import com.ops.dto.ResourceTO;
-import com.ops.dto.TripTO;
+import com.ops.dto.ResponseTO;
 import com.ops.dto.WaypointTO;
 import com.ops.exceptions.ApplicationException;
+import com.ops.exceptions.BusinessException;
 import com.ops.managers.CostCalculatorManager;
 import com.ops.managers.OptimalPathManager;
 
@@ -28,18 +30,17 @@ public class OptimalPathController extends ResponseController {
 	private static final Logger logger = LoggerFactory.getLogger(OptimalPathController.class);
 
 	@RequestMapping(value = ApplicationConstants.WAYPOINT_URL, method = RequestMethod.POST)
-	public String getWaypointLocation(@RequestBody WaypointTO waypointTO) throws ApplicationException {
+	public ResponseTO getWaypointLocation(@RequestBody WaypointTO waypointTO) throws ApplicationException, BusinessException {
 		String response = null;
-		try {
+			ResponseTO resp = new ResponseTO();
 			logger.info("-- Calling Waypoint API --");
 			response = new OptimalPathManager().getWaypointLocation(waypointTO);
-			logger.info("Response - " + response.toString());
-		} catch (Exception ae) {
-			logger.error("Exception occurred in getWaypointLocation() at controller layer - "+ae);
-			throw ae;
-		}
+			
+			resp.setResponseData(response);
+			resp.setMessage("Optimal path fetched successfully.");
+			resp.setStatus(ResultType.SUCCESS);		
 
-		return response;
+		return resp;
 	}
 
 	@RequestMapping(value = ApplicationConstants.COST_CALCULATE_URL, method = RequestMethod.POST)
@@ -67,17 +68,15 @@ public class OptimalPathController extends ResponseController {
 	}
 	
 	@RequestMapping(value = ApplicationConstants.OPTIMAL_PATH, method = RequestMethod.POST)
-	public List<TripTO> getDealersDeliveryOptimalPath(@RequestBody DealerDeliveryTO dealerDeliveryTO)  throws ApplicationException{
-		List<TripTO> trips = null;
-		try {
-			logger.info("-- Calling Optimal Path API --");
-			//dealerDeliveryTO.setLunchTime(0.5);
-			trips = new OptimalPathManager().processTrips(dealerDeliveryTO);
-		} catch (Exception ae) {
-			logger.error("Exception occurred in getWaypointLocation() at controller layer - "+ae);
-			throw ae;
-		}
-
-		return trips;
+	public ResponseTO getDealersDeliveryOptimalPath(@RequestBody DealerDeliveryTO dealerDeliveryTO)  throws ApplicationException, BusinessException {
+		
+			logger.info("-- Calling Optimal Trips API --");
+			
+			ResponseTO resp = new ResponseTO();
+			resp.setResponseData(new OptimalPathManager().processTrips(dealerDeliveryTO));
+			resp.setMessage("Minimum trips fetched successfully. !!");
+			resp.setStatus(ResultType.SUCCESS);
+  
+		return resp;
 	}
 }

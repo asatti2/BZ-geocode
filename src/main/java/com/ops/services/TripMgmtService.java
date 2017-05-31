@@ -7,16 +7,19 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ops.constants.ApplicationConstants;
 import com.ops.constants.URLConstants;
 import com.ops.dto.DealerDeliveryTO;
 import com.ops.dto.DealerTO;
 import com.ops.dto.OrderTO;
 import com.ops.dto.TripTO;
 import com.ops.dto.WaypointTO;
+import com.ops.exceptions.BusinessException;
 import com.ops.utils.HttpConnectorUtil;
 
 public class TripMgmtService {
@@ -25,7 +28,7 @@ public class TripMgmtService {
 	private String dealerLastPointAddress = null;
 	private final String geoKey = "AIzaSyBKMEIVosvAjOibv1o-DdnHiXsl2uVEORk";
 		
-	private String getOptimalRoute(WaypointTO waypointTO){
+	private String getOptimalRoute(WaypointTO waypointTO) throws BusinessException{
 		
 		logger.info("Fetching route..."+waypointTO +" with enabled optimization");
 		StringBuilder paramBuilder = new StringBuilder();
@@ -35,10 +38,14 @@ public class TripMgmtService {
 			.append("&waypoints=optimize:true");
 		waypointTO.getWaypoints().forEach(waypoint -> paramBuilder.append("|").append(waypoint));
 
-		return HttpConnectorUtil.callAPI(URLConstants.WAYPOINT_URL, paramBuilder.toString());
+		String resp = HttpConnectorUtil.callAPI(URLConstants.WAYPOINT_URL, paramBuilder.toString());
+		if(resp.length() <= 0){
+			throw new BusinessException(ApplicationConstants.INCORRECT_ADDRESS);
+		}
+		return resp;
 	}
 	
-	private String getCustomizedOptimalRoute(WaypointTO waypointTO){
+	private String getCustomizedOptimalRoute(WaypointTO waypointTO) throws BusinessException{
 		
 		logger.info("Fetching route..."+waypointTO +" with disabled optimization");
 		StringBuilder paramBuilder = new StringBuilder();
@@ -48,7 +55,11 @@ public class TripMgmtService {
 			.append("&waypoints=optimize:false");
 		waypointTO.getWaypoints().forEach(waypoint -> paramBuilder.append("|").append(waypoint));
 
-		return HttpConnectorUtil.callAPI(URLConstants.WAYPOINT_URL, paramBuilder.toString());
+		String resp =  HttpConnectorUtil.callAPI(URLConstants.WAYPOINT_URL, paramBuilder.toString());
+		if(resp.length() <= 0){
+			throw new BusinessException(ApplicationConstants.INCORRECT_ADDRESS);
+		}
+		return resp;
 	}
 	
 	private int calculateDistance(JSONArray waypointsArr){
@@ -61,7 +72,7 @@ public class TripMgmtService {
 		return optimizedDistanceBetweenWaypoints;		
 	}
 	
-	public double calculateDealersWaypointDistance(List<DealerTO> dealersList){
+	public double calculateDealersWaypointDistance(List<DealerTO> dealersList) throws JSONException, BusinessException{
 		
 		WaypointTO dealersWaypoints = new WaypointTO();
 		dealersWaypoints.setOrigin(dealersList.get(0).getAddress());
@@ -82,7 +93,7 @@ public class TripMgmtService {
 		return dealersWaypointsDistance/1000;
 	}
 	
-	public double calculateOrdersWaypointDistance(List<OrderTO> ordersList){
+	public double calculateOrdersWaypointDistance(List<OrderTO> ordersList) throws JSONException, BusinessException{
 		
 		WaypointTO orderWaypoints = new WaypointTO();
 		orderWaypoints.setOrigin(dealerLastPointAddress);
@@ -133,7 +144,7 @@ public class TripMgmtService {
 		return Collections.min(orderValuesList);		
 	}
 	
-	public void generateTripRoute(TripTO tripWaypoints){
+	public void generateTripRoute(TripTO tripWaypoints) throws JSONException, BusinessException{
 		
 		List<String> finalRouteData = new LinkedList<String>();
 		List<DealerTO> dealersList = tripWaypoints.getDealersList();
@@ -190,8 +201,19 @@ public class TripMgmtService {
 		
 	}
 	
-	public void generateTripRoutes(List<TripTO> generatedTripsList) {
-		generatedTripsList.forEach(generatedTrip -> new TripMgmtService().generateTripRoute(generatedTrip));
+	public void generateTripRoutes(List<TripTO> generatedTripsList) throws BusinessException {
+		generatedTripsList.forEach(generatedTrip -> {
+			try{
+				new TripMgmtService().generateTripRoute(generatedTrip);
+			}catch(BusinessException be){
+				try {
+					throw be;
+				} catch (BusinessException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		});
 	}
 	
 	public void prepareTripData(DealerDeliveryTO dealerDeliveryTO, double currentTripTotalTime, double dealersWaypointsDistance, double ordersWaypointDistance, List<TripTO> generatedTripsList, int index){

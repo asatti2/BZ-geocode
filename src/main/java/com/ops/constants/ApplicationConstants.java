@@ -10,4 +10,5 @@ public interface ApplicationConstants {
 	String OPTIMAL_PATH = "/optimalTrips";
 
 	String RESP_ERROR = "resp.error";
+	String INCORRECT_ADDRESS = "incorrect.address";
 }

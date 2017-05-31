@@ -6,15 +6,19 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.json.JSONException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ops.constants.ApplicationConstants;
 import com.ops.constants.URLConstants;
 import com.ops.dto.DealerDeliveryTO;
 import com.ops.dto.DealerTO;
 import com.ops.dto.OrderTO;
 import com.ops.dto.TripTO;
 import com.ops.dto.WaypointTO;
+import com.ops.exceptions.ApplicationException;
+import com.ops.exceptions.BusinessException;
 import com.ops.services.TripMgmtService;
 import com.ops.utils.HttpConnectorUtil;
 
@@ -30,7 +34,7 @@ public class OptimalPathManager {
 	private TripMgmtService tripService = new TripMgmtService();
 	private int recursionIndex = 0;
 
-	public String getWaypointLocation(WaypointTO waypointTO) {
+	public String getWaypointLocation(WaypointTO waypointTO) throws BusinessException {
 		logger.info("waypointTO - " + waypointTO);
 
 		StringBuilder paramBuilder = new StringBuilder();
@@ -41,12 +45,16 @@ public class OptimalPathManager {
 			paramBuilder.append("|").append(waypoint);
 
 		String resp = HttpConnectorUtil.callAPI(URLConstants.WAYPOINT_URL, paramBuilder.toString());
+		
+		if(resp.length() <= 0){
+			throw new BusinessException(ApplicationConstants.INCORRECT_ADDRESS);
+		}
 
 		return resp;
 	}
 
 	
-	public List<TripTO> processTrips(DealerDeliveryTO dealerDeliveryTO) {
+	public List<TripTO> processTrips(DealerDeliveryTO dealerDeliveryTO) throws BusinessException, JSONException, ApplicationException {
 		logger.info("Request recieved to fetch trips...");
 		originalDealersPool = dealerDeliveryTO.getDealerList();
 		getOptimizedTrips(dealerDeliveryTO);
@@ -54,46 +62,55 @@ public class OptimalPathManager {
 		return generatedTripsList;
 	}
 
-	private void getOptimizedTrips(DealerDeliveryTO dealerDeliveryTO) {
+	private void getOptimizedTrips(DealerDeliveryTO dealerDeliveryTO) throws JSONException, BusinessException, ApplicationException {
 		
 		recursionIndex++;
 		
-		double workingHours = dealerDeliveryTO.getWorkingHours();		
-		double dealersWaypointsDistance = tripService.calculateDealersWaypointDistance(dealerDeliveryTO.getDealerList());
-		double ordersWaypointDistance = tripService.calculateOrdersWaypointDistance(dealerDeliveryTO.getOrderList());
-		double totalTripTime = tripService.calculateTotalTripTime(dealerDeliveryTO, dealersWaypointsDistance,ordersWaypointDistance);
-		
-		previousTripTotalTime = currentTripTotalTime;
-		currentTripTotalTime = totalTripTime;
-		
-		if(removedOrdersPool.size() > 1){
-			removedOrdersPool.get(removedOrdersPool.size()-2).setTimeSpent(previousTripTotalTime-currentTripTotalTime);	
-		}	
-		
+		try{
+			
+			double workingHours = dealerDeliveryTO.getWorkingHours();		
+			double dealersWaypointsDistance = tripService.calculateDealersWaypointDistance(dealerDeliveryTO.getDealerList());
+			double ordersWaypointDistance = tripService.calculateOrdersWaypointDistance(dealerDeliveryTO.getOrderList());
+			double totalTripTime = tripService.calculateTotalTripTime(dealerDeliveryTO, dealersWaypointsDistance,ordersWaypointDistance);
+			
+			previousTripTotalTime = currentTripTotalTime;
+			currentTripTotalTime = totalTripTime;
+			
+			if(removedOrdersPool.size() > 1){
+				removedOrdersPool.get(removedOrdersPool.size()-2).setTimeSpent(previousTripTotalTime-currentTripTotalTime);	
+			}	
+			
 
-		if (totalTripTime > workingHours) {
-			logger.info("Total Trip time is : " + totalTripTime + " which is " + (totalTripTime - workingHours) +" hours greater than working hours.");
-			tripService.reduceOrder(dealerDeliveryTO, removedOrdersPool, removedDealersPool);			
-			manageDealersAccordingToOrders(dealerDeliveryTO);
-			getOptimizedTrips(dealerDeliveryTO);						
-		} else {
-			logger.info("Total Trip time is : " + totalTripTime + " which is " + (workingHours - totalTripTime) +" hours less than working hours.");
-			enhanceTripIfPossible(dealerDeliveryTO);
-			manageDealersAccordingToOrders(dealerDeliveryTO);			
-			
-			tripService.prepareTripData(dealerDeliveryTO, currentTripTotalTime, dealersWaypointsDistance, ordersWaypointDistance, generatedTripsList, recursionIndex);
-			
-			if(removedOrdersPool.size() > 0){
-				removedOrdersPool.forEach(removedOrder -> removedOrder.setTimeSpent(0));
-				previousTripTotalTime = 0;
-				currentTripTotalTime = 0;				
-				dealerDeliveryTO.setOrderList(removedOrdersPool);
-				removedOrdersPool = new LinkedList<OrderTO>();
+			if (totalTripTime > workingHours) {
+				logger.info("Total Trip time is : " + totalTripTime + " which is " + (totalTripTime - workingHours) +" hours greater than working hours.");
+				tripService.reduceOrder(dealerDeliveryTO, removedOrdersPool, removedDealersPool);			
 				manageDealersAccordingToOrders(dealerDeliveryTO);
-				getOptimizedTrips(dealerDeliveryTO);
-			}			
+				getOptimizedTrips(dealerDeliveryTO);						
+			} else {
+				logger.info("Total Trip time is : " + totalTripTime + " which is " + (workingHours - totalTripTime) +" hours less than working hours.");
+				enhanceTripIfPossible(dealerDeliveryTO);
+				manageDealersAccordingToOrders(dealerDeliveryTO);			
+				
+				tripService.prepareTripData(dealerDeliveryTO, currentTripTotalTime, dealersWaypointsDistance, ordersWaypointDistance, generatedTripsList, recursionIndex);
+				
+				if(removedOrdersPool.size() > 0){
+					removedOrdersPool.forEach(removedOrder -> removedOrder.setTimeSpent(0));
+					previousTripTotalTime = 0;
+					currentTripTotalTime = 0;				
+					dealerDeliveryTO.setOrderList(removedOrdersPool);
+					removedOrdersPool = new LinkedList<OrderTO>();
+					manageDealersAccordingToOrders(dealerDeliveryTO);
+					getOptimizedTrips(dealerDeliveryTO);
+				}			
+				
+			}
 			
+		} catch (BusinessException be){
+			throw be;
+		} catch (Exception e){
+			throw new ApplicationException();
 		}
+		
 	}
 	
 	private void manageDealersAccordingToOrders(DealerDeliveryTO dealerDeliveryTO){
