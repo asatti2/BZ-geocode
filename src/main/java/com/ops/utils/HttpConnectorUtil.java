@@ -37,8 +37,4 @@ public class HttpConnectorUtil {
 		logger.info("Response - "+response.toString());
 		return response.toString();
 	}
-
-	public static void main(String[] args) throws Exception {
-		//sendCall();
-	}
 }

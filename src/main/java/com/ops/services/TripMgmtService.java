@@ -185,7 +185,7 @@ public class TripMgmtService {
 		finalRouteData.remove(0);
 		finalRouteData.remove(finalRouteData.size()-1);
 		waypointTo.setWaypoints(finalRouteData);
-		
+		logger.info("Generating Trip Route for the final data: "+finalRouteData);
 		tripWaypoints.setOptimizeRouteData(getCustomizedOptimalRoute(waypointTo));
 		
 	}
