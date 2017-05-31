@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.json.JSONException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,7 +53,7 @@ public class OptimalPathManager {
 	}
 
 	
-	public List<TripTO> processTrips(DealerDeliveryTO dealerDeliveryTO) throws BusinessException, JSONException, ApplicationException {
+	public List<TripTO> processTrips(DealerDeliveryTO dealerDeliveryTO) throws BusinessException, ApplicationException {
 		logger.info("Request recieved to fetch trips...");
 		originalDealersPool = dealerDeliveryTO.getDealerList();
 		getOptimizedTrips(dealerDeliveryTO);
@@ -62,7 +61,7 @@ public class OptimalPathManager {
 		return generatedTripsList;
 	}
 
-	private void getOptimizedTrips(DealerDeliveryTO dealerDeliveryTO) throws JSONException, BusinessException, ApplicationException {
+	private void getOptimizedTrips(DealerDeliveryTO dealerDeliveryTO) throws BusinessException, ApplicationException {
 		
 		recursionIndex++;
 		
