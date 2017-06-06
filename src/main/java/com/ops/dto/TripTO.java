@@ -10,9 +10,15 @@ public class TripTO {
 	double totalTripTime;	
 	double dealerPointDistance;
 	double interDeliveryPointDistance;
+	String totalTripDisplayTime;	
 	
 	
-	
+	public String getTotalTripDisplayTime() {
+		return totalTripDisplayTime;
+	}
+	public void setTotalTripDisplayTime(String totalTripDisplayTime) {
+		this.totalTripDisplayTime = totalTripDisplayTime;
+	}
 	public double getDealerPointDistance() {
 		return dealerPointDistance;
 	}

@@ -225,7 +225,14 @@ public class TripMgmtService {
 		generatedTrip.setTotalTripTime(currentTripTotalTime);
 		generatedTrip.setDealerPointDistance(dealersWaypointsDistance);
 		generatedTrip.setInterDeliveryPointDistance(ordersWaypointDistance);
+		generatedTrip.setTotalTripDisplayTime(calculateDisplayTime(currentTripTotalTime));
 		generatedTripsList.add(generatedTrip);
+		
+	}
+	
+	private String calculateDisplayTime(double currentTripTotalTime){
+		double timeInMinutes = currentTripTotalTime * 60.00 ;
+		return (int)timeInMinutes/60 + " hours "+Math.round(timeInMinutes%60) +" minutes";
 	}
 
 }
