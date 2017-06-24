@@ -38,8 +38,11 @@ public class OptimalPathManager {
 
 		StringBuilder paramBuilder = new StringBuilder();
 		paramBuilder.append("origin=").append(waypointTO.getOrigin()).append("&destination=")
-				.append(waypointTO.getDestination()).append("&key=").append("AIzaSyBKMEIVosvAjOibv1o-DdnHiXsl2uVEORk")
-				.append("&waypoints=optimize:true");
+				.append(waypointTO.getDestination()).append("&key=")
+				.append("AIzaSyBKMEIVosvAjOibv1o-DdnHiXsl2uVEORk")
+				.append("&avoid=highways")
+				.append("&waypoints=optimize:true")
+				;
 		for (String waypoint : waypointTO.getWaypoints())
 			paramBuilder.append("|").append(waypoint);
 

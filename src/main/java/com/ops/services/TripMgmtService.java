@@ -35,6 +35,7 @@ public class TripMgmtService {
 		paramBuilder.append("origin=").append(waypointTO.getOrigin())
 			.append("&destination=").append(waypointTO.getDestination())
 			.append("&key=").append(geoKey)
+			.append("&avoid=highways")
 			.append("&waypoints=optimize:true");
 		waypointTO.getWaypoints().forEach(waypoint -> paramBuilder.append("|").append(waypoint));
 
@@ -52,6 +53,7 @@ public class TripMgmtService {
 		paramBuilder.append("origin=").append(waypointTO.getOrigin())
 			.append("&destination=").append(waypointTO.getDestination())
 			.append("&key=").append(geoKey)
+			.append("&avoid=highways")
 			.append("&waypoints=optimize:false");
 		waypointTO.getWaypoints().forEach(waypoint -> paramBuilder.append("|").append(waypoint));
 
