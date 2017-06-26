@@ -201,6 +201,22 @@ public class TripMgmtService {
 		logger.info("Generating Trip Route for the final data: "+finalRouteData);
 		tripWaypoints.setOptimizeRouteData(getCustomizedOptimalRoute(waypointTo));
 		
+		List<String> deliveryPointsOrders = new ArrayList<String>();
+		jsonObj = new JSONObject(tripWaypoints.getOptimizeRouteData());
+		JSONArray arr = jsonObj.getJSONArray("routes").getJSONObject(0).getJSONArray("legs");
+		for(int k = tripWaypoints.getDealersList().size(); k<arr.length(); k++){
+			deliveryPointsOrders.add(arr.getJSONObject(k).getString("end_address"));
+		}
+		
+		tripWaypoints.setOrdersDirections(deliveryPointsOrders);
+		
+		List<String> dealerPointOrders = new ArrayList<String>();
+		for(int k = 0; k<tripWaypoints.getDealersList().size(); k++){
+			dealerPointOrders.add(arr.getJSONObject(k).getString("end_address"));
+		}
+		
+		tripWaypoints.setDealersDirections(dealerPointOrders);
+		
 	}
 	
 	public void generateTripRoutes(List<TripTO> generatedTripsList) throws BusinessException {

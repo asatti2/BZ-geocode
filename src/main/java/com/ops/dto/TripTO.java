@@ -6,6 +6,8 @@ public class TripTO {
 	
 	List<DealerTO> dealersList;
 	List<OrderTO> ordersList;
+	List<String> ordersDirections;
+	List<String> dealersDirections;
 	String optimizeRouteData;
 	double totalTripTime;	
 	double dealerPointDistance;
@@ -13,6 +15,18 @@ public class TripTO {
 	String totalTripDisplayTime;	
 	
 	
+	public List<String> getDealersDirections() {
+		return dealersDirections;
+	}
+	public void setDealersDirections(List<String> dealersDirections) {
+		this.dealersDirections = dealersDirections;
+	}
+	public List<String> getOrdersDirections() {
+		return ordersDirections;
+	}
+	public void setOrdersDirections(List<String> ordersDirections) {
+		this.ordersDirections = ordersDirections;
+	}
 	public String getTotalTripDisplayTime() {
 		return totalTripDisplayTime;
 	}
