@@ -165,7 +165,8 @@ public class TripMgmtService {
 		}
 		waypointTo.setWaypoints(wayPointsList);
 		JSONObject jsonObj = new JSONObject(getOptimalRoute(waypointTo));
-		JSONArray dealerOrderedWaypointsArr = jsonObj.getJSONArray("routes").getJSONObject(0).getJSONArray("legs");
+		JSONArray dealerOrderedWaypointsArr = jsonObj.getJSONArray("routes").getJSONObject(0).getJSONArray("legs");		
+		
 		for(int i=0; i<dealerOrderedWaypointsArr.length(); i++){
 			JSONObject loc = dealerOrderedWaypointsArr.getJSONObject(i).getJSONObject("start_location");
 			finalRouteData.add(loc.getDouble("lat")+","+loc.getDouble("lng"));
@@ -187,6 +188,16 @@ public class TripMgmtService {
 		waypointTo.setWaypoints(wayPointsList);
 		jsonObj = new JSONObject(getOptimalRoute(waypointTo));
 		JSONArray ordersOrderedWaypointsArr = jsonObj.getJSONArray("routes").getJSONObject(0).getJSONArray("legs");
+		
+		List<OrderTO> sortedOrdersList = new LinkedList<OrderTO>();
+		JSONArray waypointsOrders = jsonObj.getJSONArray("routes").getJSONObject(0).getJSONArray("waypoint_order");		
+		for(int m=0; m<waypointsOrders.length(); m++){
+			sortedOrdersList.add(ordersList.get(waypointsOrders.getInt(m)));
+		}
+		sortedOrdersList.add(ordersList.get(ordersList.size()-1));
+		tripWaypoints.setOrdersList(sortedOrdersList);
+		
+		
 		for(int i=0; i<ordersOrderedWaypointsArr.length(); i++){
 			JSONObject loc = ordersOrderedWaypointsArr.getJSONObject(i).getJSONObject("end_location");
 			finalRouteData.add(loc.getDouble("lat")+","+loc.getDouble("lng"));
