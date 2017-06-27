@@ -11,4 +11,12 @@ public interface ApplicationConstants {
 
 	String RESP_ERROR = "resp.error";
 	String INCORRECT_ADDRESS = "incorrect.address";
+	String NOT_FOUND = "address.not.geocoded";
+	String ZERO_RESULTS = "no.route.found";
+	String MAX_WAYPOINTS_EXCEEDED = "waypoints.exceed";
+	String MAX_ROUTE_LENGTH_EXCEEDED = "route.length.exceed";
+	String INVALID_REQUEST = "invalid.request";
+	String OVER_QUERY_LIMIT = "too.many.requests";
+	String REQUEST_DENIED = "request.denied";
+	String UNKNOWN_ERROR = "server.error";
 }

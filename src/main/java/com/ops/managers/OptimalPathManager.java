@@ -6,9 +6,13 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import com.ops.constants.ApplicationConstants;
 import com.ops.constants.URLConstants;
 import com.ops.dto.DealerDeliveryTO;
@@ -48,8 +52,9 @@ public class OptimalPathManager {
 
 		String resp = HttpConnectorUtil.callAPI(URLConstants.WAYPOINT_URL, paramBuilder.toString());
 		
-		if(resp.length() <= 0){
-			throw new BusinessException(ApplicationConstants.INCORRECT_ADDRESS);
+		JSONObject jsonObj = new JSONObject(resp);
+		if (!"OK".equals(jsonObj.get("status").toString())) {
+			throw new BusinessException(new TripMgmtService().analyzeStatusCode(jsonObj.get("status").toString()));
 		}
 
 		return resp;
