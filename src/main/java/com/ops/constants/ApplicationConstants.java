@@ -19,4 +19,5 @@ public interface ApplicationConstants {
 	String OVER_QUERY_LIMIT = "too.many.requests";
 	String REQUEST_DENIED = "request.denied";
 	String UNKNOWN_ERROR = "server.error";
+	String INVALID_WORKING_HOURS = "invalid.working.hours";
 }

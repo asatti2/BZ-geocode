@@ -92,7 +92,11 @@ public class OptimalPathManager {
 				logger.info("Total Trip time is : " + totalTripTime + " which is " + (totalTripTime - workingHours) +" hours greater than working hours.");
 				tripService.reduceOrder(dealerDeliveryTO, removedOrdersPool, removedDealersPool);			
 				manageDealersAccordingToOrders(dealerDeliveryTO);
-				getOptimizedTrips(dealerDeliveryTO);						
+				if(!dealerDeliveryTO.getDealerList().isEmpty() && !dealerDeliveryTO.getOrderList().isEmpty()){
+					getOptimizedTrips(dealerDeliveryTO);
+				}else{
+					throw new BusinessException(ApplicationConstants.INVALID_WORKING_HOURS);
+				}
 			} else {
 				logger.info("Total Trip time is : " + totalTripTime + " which is " + (workingHours - totalTripTime) +" hours less than working hours.");
 				enhanceTripIfPossible(dealerDeliveryTO);
@@ -107,7 +111,11 @@ public class OptimalPathManager {
 					dealerDeliveryTO.setOrderList(removedOrdersPool);
 					removedOrdersPool = new LinkedList<OrderTO>();
 					manageDealersAccordingToOrders(dealerDeliveryTO);
-					getOptimizedTrips(dealerDeliveryTO);
+					if(!dealerDeliveryTO.getDealerList().isEmpty() && !dealerDeliveryTO.getOrderList().isEmpty()){
+						getOptimizedTrips(dealerDeliveryTO);
+					}else{
+						throw new BusinessException(ApplicationConstants.INVALID_WORKING_HOURS);
+					}
 				}			
 				
 			}
@@ -115,6 +123,7 @@ public class OptimalPathManager {
 		} catch (BusinessException be){
 			throw be;
 		} catch (Exception e){
+			e.printStackTrace();
 			throw new ApplicationException();
 		}
 		
