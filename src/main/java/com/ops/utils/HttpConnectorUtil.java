@@ -34,7 +34,6 @@ public class HttpConnectorUtil {
 			System.out.println(ex.getMessage());
 		}
 
-		logger.info("Response - "+response.toString());
 		return response.toString();
 	}
 }

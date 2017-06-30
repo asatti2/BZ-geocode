@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<configuration scan="true" scanPeriod="15 seconds">
+
+  <property resource="app.properties" />
+
+  <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+    <file>${LOG_FILE_LOCATION}/${LOG_FILE_NAME}</file>
+    <encoder>
+      <pattern>%date %level [%thread] %logger{36} [%file:%line] %msg%n</pattern>
+    </encoder>
+  </appender>
+
+
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <logger name="com.ops" level="${LOG_LEVEL}"/>
+
+  <root level="${LOG_LEVEL}">
+    <appender-ref ref="FILE" />
+    <appender-ref ref="STDOUT" />
+  </root>
+</configuration>
