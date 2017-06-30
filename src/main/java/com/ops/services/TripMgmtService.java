@@ -64,7 +64,7 @@ public class TripMgmtService {
 		if (!"OK".equals(jsonObj.get("status").toString())) {
 			throw new BusinessException(analyzeStatusCode(jsonObj.get("status").toString()));
 		}
-		
+
 		return resp;
 	}
 
@@ -239,7 +239,9 @@ public class TripMgmtService {
 		for (int m = 0; m < waypointsOrders.length(); m++) {
 			sortedOrdersList.add(ordersList.get(waypointsOrders.getInt(m)));
 		}
-		sortedOrdersList.add(ordersList.get(ordersList.size() - 1));
+		if (sortedOrdersList.size() > 1) {
+			sortedOrdersList.add(ordersList.get(ordersList.size() - 1));
+		}
 		tripWaypoints.setOrdersList(sortedOrdersList);
 
 		for (int i = 0; i < ordersOrderedWaypointsArr.length(); i++) {
