@@ -20,4 +20,5 @@ public interface ApplicationConstants {
 	String REQUEST_DENIED = "request.denied";
 	String UNKNOWN_ERROR = "server.error";
 	String INVALID_WORKING_HOURS = "invalid.working.hours";
+	String DEALER_ID_MISMATCH = "dealer.ids.mismatch";
 }

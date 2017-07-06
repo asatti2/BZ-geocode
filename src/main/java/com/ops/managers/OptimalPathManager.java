@@ -1,6 +1,7 @@
 package com.ops.managers;
 
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
@@ -9,10 +10,7 @@ import java.util.stream.Collectors;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
 import com.ops.constants.ApplicationConstants;
 import com.ops.constants.URLConstants;
 import com.ops.dto.DealerDeliveryTO;
@@ -63,10 +61,37 @@ public class OptimalPathManager {
 	
 	public List<TripTO> processTrips(DealerDeliveryTO dealerDeliveryTO) throws BusinessException, ApplicationException {
 		logger.info("Request recieved to fetch trips...");
+		validateDealersOrdersIds(dealerDeliveryTO);
 		originalDealersPool = dealerDeliveryTO.getDealerList();
 		getOptimizedTrips(dealerDeliveryTO);
 		tripService.generateTripRoutes(generatedTripsList);
 		return generatedTripsList;
+	}
+	
+	public void validateDealersOrdersIds(DealerDeliveryTO dealerDeliveryTO) throws BusinessException{
+		
+		boolean flag = false;
+		
+		List<DealerTO> dealersList = dealerDeliveryTO.getDealerList();
+		List<OrderTO> ordersList = dealerDeliveryTO.getOrderList();
+		
+		Set<Integer> dealerIds  = new HashSet<Integer>();
+		Set<Integer> orderDealerIds  = new HashSet<Integer>();
+		
+		dealersList.forEach(dealerObj -> {
+			dealerIds.add(dealerObj.getDealerId());
+		});
+		
+		ordersList.forEach(orderObj -> {
+			orderDealerIds.addAll(orderObj.getDealerId());
+		});
+		
+		Iterator<Integer> itr = orderDealerIds.iterator();
+		while(itr.hasNext()){
+			if(!dealerIds.contains(itr.next())){
+				throw new BusinessException(ApplicationConstants.DEALER_ID_MISMATCH);
+			}
+		}		
 	}
 
 	private void getOptimizedTrips(DealerDeliveryTO dealerDeliveryTO) throws BusinessException, ApplicationException {
