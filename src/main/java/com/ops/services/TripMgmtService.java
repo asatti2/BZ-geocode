@@ -261,7 +261,7 @@ public class TripMgmtService {
 		List<String> deliveryPointsOrders = new ArrayList<String>();
 		jsonObj = new JSONObject(tripWaypoints.getOptimizeRouteData());
 		JSONArray arr = jsonObj.getJSONArray("routes").getJSONObject(0).getJSONArray("legs");
-		for (int k = tripWaypoints.getDealersList().size(); k < arr.length(); k++) {
+		for (int k = tripWaypoints.getDealersList().size(); k < arr.length() - 1; k++) {
 			deliveryPointsOrders.add(arr.getJSONObject(k).getString("end_address"));
 		}
 
