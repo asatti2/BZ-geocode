@@ -1,5 +1,6 @@
 package com.ops.controllers;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.json.JSONArray;
@@ -31,11 +32,25 @@ public class OptimalPathController extends ResponseController {
 
 	@RequestMapping(value = ApplicationConstants.WAYPOINT_URL, method = RequestMethod.POST)
 	public ResponseTO getWaypointLocation(@RequestBody WaypointTO waypointTO) throws ApplicationException, BusinessException {
-		String response = null;
+		List<String> response = new ArrayList<String>();
 			ResponseTO resp = new ResponseTO();
 			logger.info("-- Calling Waypoint API --");
-			response = new OptimalPathManager().getWaypointLocation(waypointTO);
 			
+			while(waypointTO.getWaypoints().size() > 22){
+				int size = 22;
+				int initIndex = 0;
+				WaypointTO tmpDto = new WaypointTO();
+				tmpDto.setOrigin(waypointTO.getOrigin());
+				tmpDto.setDestination(waypointTO.getDestination());
+				tmpDto.setWaypoints(waypointTO.getWaypoints().subList(initIndex, size));
+				response.add(new OptimalPathManager().getWaypointLocation(tmpDto));
+				waypointTO.getWaypoints().subList(0, 22).clear();
+			}
+			
+			if(waypointTO.getWaypoints().size() <= 22){
+				response.add(new OptimalPathManager().getWaypointLocation(waypointTO));
+			}
+						
 			resp.setResponseData(response);
 			resp.setMessage("Optimal path fetched successfully.");
 			resp.setStatus(ResultType.SUCCESS);		

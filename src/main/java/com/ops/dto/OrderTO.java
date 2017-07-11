@@ -2,18 +2,29 @@ package com.ops.dto;
 
 import java.util.List;
 
+import com.ops.utils.dijakstra.Vertex;
+
 public class OrderTO {
 	
 	private String address;
 	private List<Integer> dealerId;
 	private int orderId;
 	private String orderRefNo;
-	private int orderAmount;	
+	private int orderAmount;
+	private Vertex orderVertex;
 	
 	private double timeSpent;
 	
 	
 	
+	
+	
+	public Vertex getOrderVertex() {
+		return orderVertex;
+	}
+	public void setOrderVertex(Vertex orderVertex) {
+		this.orderVertex = orderVertex;
+	}
 	public double getTimeSpent() {
 		return timeSpent;
 	}

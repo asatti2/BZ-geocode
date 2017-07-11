@@ -2,6 +2,7 @@ package com.ops.dto;
 
 import java.io.Serializable;
 import java.util.List;
+import java.util.Map;
 
 public class DealerDeliveryTO implements Serializable {
 	private static final long serialVersionUID = 1L;
@@ -13,9 +14,23 @@ public class DealerDeliveryTO implements Serializable {
 	private int foCount;	
 	private double 	workingHours;
 	private double lunchTime;
+	private double orderTripDistance;
+	private Map<Integer,Double> distanceMap; 
 	
 	
 	
+	public Map<Integer, Double> getDistanceMap() {
+		return distanceMap;
+	}
+	public void setDistanceMap(Map<Integer, Double> distanceMap) {
+		this.distanceMap = distanceMap;
+	}
+	public double getOrderTripDistance() {
+		return orderTripDistance;
+	}
+	public void setOrderTripDistance(double orderTripDistance) {
+		this.orderTripDistance = orderTripDistance;
+	}
 	public double getLunchTime() {
 		return lunchTime;
 	}

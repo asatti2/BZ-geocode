@@ -2,8 +2,10 @@ package com.ops.services;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.json.JSONArray;
@@ -12,8 +14,6 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
 import com.ops.constants.ApplicationConstants;
 import com.ops.constants.URLConstants;
 import com.ops.dto.DealerDeliveryTO;
@@ -22,6 +22,7 @@ import com.ops.dto.OrderTO;
 import com.ops.dto.TripTO;
 import com.ops.dto.WaypointTO;
 import com.ops.exceptions.BusinessException;
+import com.ops.managers.OptimalPathManager;
 import com.ops.utils.HttpConnectorUtil;
 
 public class TripMgmtService {
@@ -49,7 +50,7 @@ public class TripMgmtService {
 		return resp;
 	}
 
-	private String getCustomizedOptimalRoute(WaypointTO waypointTO) throws BusinessException {
+	/*private String getCustomizedOptimalRoute(WaypointTO waypointTO) throws BusinessException {
 
 		logger.info("Fetching route..." + waypointTO + " with disabled optimization");
 		StringBuilder paramBuilder = new StringBuilder();
@@ -66,6 +67,25 @@ public class TripMgmtService {
 		}
 
 		return resp;
+	}*/
+	
+	public JSONArray getDistance(String origin, String destination) throws BusinessException {
+		
+		StringBuilder paramBuilder = new StringBuilder();
+		
+		paramBuilder.append("origins=").append(origin)
+					.append("&destinations=").append(destination)
+					.append("&key=").append(geoKey)
+					.append("&avoid=highways");
+		
+		String resp = HttpConnectorUtil.callAPI(URLConstants.DISTANCE_MATRIX_URL, paramBuilder.toString());
+		
+		JSONObject jsonObj = new JSONObject(resp);
+		if (!"OK".equals(jsonObj.get("status").toString())) {
+			throw new BusinessException(analyzeStatusCode(jsonObj.get("status").toString()));
+		}
+		
+		return jsonObj.getJSONArray("rows").getJSONObject(0).getJSONArray("elements");
 	}
 
 	public String analyzeStatusCode(String statusCode) {
@@ -96,6 +116,9 @@ public class TripMgmtService {
 			break;
 		case "REQUEST_DENIED":
 			errorConstant = ApplicationConstants.REQUEST_DENIED;
+			break;
+		case "MAX_ELEMENTS_EXCEEDED":
+			errorConstant = ApplicationConstants.MAX_ELEMENTS_EXCEEDED;
 			break;
 		default:
 			errorConstant = null;
@@ -136,7 +159,11 @@ public class TripMgmtService {
 		return dealersWaypointsDistance / 1000;
 	}
 
-	public double calculateOrdersWaypointDistance(List<OrderTO> ordersList) throws JSONException, BusinessException {
+	public double calculateOrdersWaypointDistance(DealerDeliveryTO dealerDeliverTO) throws JSONException, BusinessException {		
+		return dealerDeliverTO.getOrderTripDistance() / 1000;
+	}
+	
+	public double calculateOrdersWaypointDistance(DealerDeliveryTO ddto, List<OrderTO> ordersList) throws JSONException, BusinessException {
 
 		WaypointTO orderWaypoints = new WaypointTO();
 		orderWaypoints.setOrigin(dealerLastPointAddress);
@@ -146,10 +173,18 @@ public class TripMgmtService {
 		orderWaypoints.setWaypoints(wayPointsList);
 
 		JSONObject jsonObj = new JSONObject(getOptimalRoute(orderWaypoints));
-		double ordersWaypointsDistance = calculateDistance(
-				jsonObj.getJSONArray("routes").getJSONObject(0).getJSONArray("legs"));
+		JSONArray waypointsArr = jsonObj.getJSONArray("routes").getJSONObject(0).getJSONArray("legs");
+		double ordersWaypointsDistance = calculateDistance(waypointsArr);
 		logger.info("Distance Between orders Waypoints = " + ordersWaypointsDistance + " km");
-
+		
+		Map<Integer, Double> distanceMatrixMap = new HashMap<Integer,Double>();
+		
+		distanceMatrixMap.put(0, 0.0);
+		for (int i = 0; i < waypointsArr.length(); i++) {
+			distanceMatrixMap.put(i+1,waypointsArr.getJSONObject(i).getJSONObject("distance").getDouble("value") / 1000);
+		}
+		
+		ddto.setDistanceMap(distanceMatrixMap);
 		return ordersWaypointsDistance / 1000;
 	}
 
@@ -219,61 +254,34 @@ public class TripMgmtService {
 		JSONObject endLoc = dealerOrderedWaypointsArr.getJSONObject(dealerOrderedWaypointsArr.length() - 1)
 				.getJSONObject("end_location");
 		finalRouteData.add(endLoc.getDouble("lat") + "," + endLoc.getDouble("lng"));
+		String sourceAddress = endLoc.getDouble("lat") + "," + endLoc.getDouble("lng");
+		
+		if(tripWaypoints.getOrdersList().size() > 22) {
+			tripWaypoints.setOrdersList(new OptimalPathManager().processDijakstra(sourceAddress, ordersList).getOrderList());
+		} else {
+			waypointTo = new WaypointTO();
+			waypointTo.setOrigin(endLoc.getDouble("lat") + "," + endLoc.getDouble("lng"));
+			waypointTo.setDestination(ordersList.get(ordersList.size() - 1).getAddress());
+			wayPointsList = new ArrayList<String>();
+			for (int i = 0; i < ordersList.size() - 1; i++) {
+				wayPointsList.add(ordersList.get(i).getAddress());
+			}
+			if (wayPointsList.isEmpty()) {
+				wayPointsList.add(ordersList.get(0).getAddress());
+			}
+			waypointTo.setWaypoints(wayPointsList);
+			jsonObj = new JSONObject(getOptimalRoute(waypointTo));
 
-		waypointTo = new WaypointTO();
-		waypointTo.setOrigin(endLoc.getDouble("lat") + "," + endLoc.getDouble("lng"));
-		waypointTo.setDestination(ordersList.get(ordersList.size() - 1).getAddress());
-		wayPointsList = new ArrayList<String>();
-		for (int i = 0; i < ordersList.size() - 1; i++) {
-			wayPointsList.add(ordersList.get(i).getAddress());
+			List<OrderTO> sortedOrdersList = new LinkedList<OrderTO>();
+			JSONArray waypointsOrders = jsonObj.getJSONArray("routes").getJSONObject(0).getJSONArray("waypoint_order");
+			for (int m = 0; m < waypointsOrders.length(); m++) {
+				sortedOrdersList.add(ordersList.get(waypointsOrders.getInt(m)));
+			}
+			if (sortedOrdersList.size() > 1) {
+				sortedOrdersList.add(ordersList.get(ordersList.size() - 1));
+			}
+			tripWaypoints.setOrdersList(sortedOrdersList);
 		}
-		if (wayPointsList.isEmpty()) {
-			wayPointsList.add(ordersList.get(0).getAddress());
-		}
-		waypointTo.setWaypoints(wayPointsList);
-		jsonObj = new JSONObject(getOptimalRoute(waypointTo));
-		JSONArray ordersOrderedWaypointsArr = jsonObj.getJSONArray("routes").getJSONObject(0).getJSONArray("legs");
-
-		List<OrderTO> sortedOrdersList = new LinkedList<OrderTO>();
-		JSONArray waypointsOrders = jsonObj.getJSONArray("routes").getJSONObject(0).getJSONArray("waypoint_order");
-		for (int m = 0; m < waypointsOrders.length(); m++) {
-			sortedOrdersList.add(ordersList.get(waypointsOrders.getInt(m)));
-		}
-		if (sortedOrdersList.size() > 1) {
-			sortedOrdersList.add(ordersList.get(ordersList.size() - 1));
-		}
-		tripWaypoints.setOrdersList(sortedOrdersList);
-
-		for (int i = 0; i < ordersOrderedWaypointsArr.length(); i++) {
-			JSONObject loc = ordersOrderedWaypointsArr.getJSONObject(i).getJSONObject("end_location");
-			finalRouteData.add(loc.getDouble("lat") + "," + loc.getDouble("lng"));
-		}
-
-		waypointTo = new WaypointTO();
-		waypointTo.setOrigin(finalRouteData.get(0));
-		waypointTo.setDestination(finalRouteData.get(finalRouteData.size() - 1));
-		finalRouteData.remove(0);
-		finalRouteData.remove(finalRouteData.size() - 1);
-		waypointTo.setWaypoints(finalRouteData);
-		logger.info("Generating Trip Route for the final data: " + finalRouteData);
-		tripWaypoints.setOptimizeRouteData(getCustomizedOptimalRoute(waypointTo));
-
-		List<String> deliveryPointsOrders = new ArrayList<String>();
-		jsonObj = new JSONObject(tripWaypoints.getOptimizeRouteData());
-		JSONArray arr = jsonObj.getJSONArray("routes").getJSONObject(0).getJSONArray("legs");
-		for (int k = tripWaypoints.getDealersList().size(); k < arr.length() - 1; k++) {
-			deliveryPointsOrders.add(arr.getJSONObject(k).getString("end_address"));
-		}
-
-		tripWaypoints.setOrdersDirections(deliveryPointsOrders);
-
-		List<String> dealerPointOrders = new ArrayList<String>();
-		for (int k = 0; k < tripWaypoints.getDealersList().size(); k++) {
-			dealerPointOrders.add(arr.getJSONObject(k).getString("end_address"));
-		}
-
-		tripWaypoints.setDealersDirections(dealerPointOrders);
-
 	}
 
 	public void generateTripRoutes(List<TripTO> generatedTripsList) throws BusinessException {
@@ -303,6 +311,7 @@ public class TripMgmtService {
 		generatedTrip.setDealerPointDistance(dealersWaypointsDistance);
 		generatedTrip.setInterDeliveryPointDistance(ordersWaypointDistance);
 		generatedTrip.setTotalTripDisplayTime(calculateDisplayTime(currentTripTotalTime));
+		generatedTrip.setDistanceMap(dealerDeliveryTO.getDistanceMap());
 		generatedTripsList.add(generatedTrip);
 
 	}

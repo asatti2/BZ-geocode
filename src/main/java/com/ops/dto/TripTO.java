@@ -1,31 +1,26 @@
 package com.ops.dto;
 
 import java.util.List;
+import java.util.Map;
 
 public class TripTO {
 	
 	List<DealerTO> dealersList;
 	List<OrderTO> ordersList;
-	List<String> ordersDirections;
-	List<String> dealersDirections;
 	String optimizeRouteData;
 	double totalTripTime;	
 	double dealerPointDistance;
 	double interDeliveryPointDistance;
-	String totalTripDisplayTime;	
+	String totalTripDisplayTime;
+	Map<Integer,Double> distanceMap;
 	
 	
-	public List<String> getDealersDirections() {
-		return dealersDirections;
+	
+	public Map<Integer, Double> getDistanceMap() {
+		return distanceMap;
 	}
-	public void setDealersDirections(List<String> dealersDirections) {
-		this.dealersDirections = dealersDirections;
-	}
-	public List<String> getOrdersDirections() {
-		return ordersDirections;
-	}
-	public void setOrdersDirections(List<String> ordersDirections) {
-		this.ordersDirections = ordersDirections;
+	public void setDistanceMap(Map<Integer, Double> distanceMap) {
+		this.distanceMap = distanceMap;
 	}
 	public String getTotalTripDisplayTime() {
 		return totalTripDisplayTime;
