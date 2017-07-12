@@ -167,7 +167,8 @@ public class TripMgmtService {
 
 		WaypointTO orderWaypoints = new WaypointTO();
 		orderWaypoints.setOrigin(dealerLastPointAddress);
-		orderWaypoints.setDestination(ordersList.get(ordersList.size() - 1).getAddress());
+		//orderWaypoints.setDestination(ordersList.get(ordersList.size() - 1).getAddress());
+		orderWaypoints.setDestination(dealerLastPointAddress);
 		List<String> wayPointsList = new ArrayList<String>();
 		ordersList.forEach(order -> wayPointsList.add(order.getAddress()));
 		orderWaypoints.setWaypoints(wayPointsList);
@@ -261,7 +262,7 @@ public class TripMgmtService {
 		} else {
 			waypointTo = new WaypointTO();
 			waypointTo.setOrigin(endLoc.getDouble("lat") + "," + endLoc.getDouble("lng"));
-			waypointTo.setDestination(ordersList.get(ordersList.size() - 1).getAddress());
+			waypointTo.setDestination(endLoc.getDouble("lat") + "," + endLoc.getDouble("lng"));
 			wayPointsList = new ArrayList<String>();
 			for (int i = 0; i < ordersList.size() - 1; i++) {
 				wayPointsList.add(ordersList.get(i).getAddress());

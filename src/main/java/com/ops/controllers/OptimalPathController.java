@@ -35,19 +35,23 @@ public class OptimalPathController extends ResponseController {
 		List<String> response = new ArrayList<String>();
 			ResponseTO resp = new ResponseTO();
 			logger.info("-- Calling Waypoint API --");
+			String destination = waypointTO.getDestination();
+			List<String> waypoints = waypointTO.getWaypoints();
 			
 			while(waypointTO.getWaypoints().size() > 22){
 				int size = 22;
 				int initIndex = 0;
-				WaypointTO tmpDto = new WaypointTO();
-				tmpDto.setOrigin(waypointTO.getOrigin());
-				tmpDto.setDestination(waypointTO.getDestination());
-				tmpDto.setWaypoints(waypointTO.getWaypoints().subList(initIndex, size));
-				response.add(new OptimalPathManager().getWaypointLocation(tmpDto));
+				List<String> splitWaypointsList = waypointTO.getWaypoints().subList(initIndex, size);
+				waypointTO.setDestination(splitWaypointsList.get(splitWaypointsList.size()-1));
+				waypointTO.setWaypoints(splitWaypointsList);
+				response.add(new OptimalPathManager().getWaypointLocation(waypointTO));
+				waypointTO.setOrigin(splitWaypointsList.get(splitWaypointsList.size()-1));
+				waypointTO.setWaypoints(waypoints);
 				waypointTO.getWaypoints().subList(0, 22).clear();
 			}
 			
 			if(waypointTO.getWaypoints().size() <= 22){
+				waypointTO.setDestination(destination);
 				response.add(new OptimalPathManager().getWaypointLocation(waypointTO));
 			}
 						
