@@ -108,12 +108,12 @@ public class OptimalPathManager {
 			double workingHours = dealerDeliveryTO.getWorkingHours();		
 			double dealersWaypointsDistance = tripService.calculateDealersWaypointDistance(dealerDeliveryTO.getDealerList());
 			double ordersWaypointDistance = 0.0;
-			//if(dealerDeliveryTO.getOrderList().size() > 22){
+			if(dealerDeliveryTO.getOrderList().size() > 22){
 				processDijakstra(dealerDeliveryTO.getDealerList().get(dealerDeliveryTO.getDealerList().size()-1).getAddress(), dealerDeliveryTO);
 				ordersWaypointDistance = tripService.calculateOrdersWaypointDistance(dealerDeliveryTO);
-			/*} else {
+			} else {
 				ordersWaypointDistance = tripService.calculateOrdersWaypointDistance(dealerDeliveryTO, dealerDeliveryTO.getOrderList());
-			}*/
+			}
 			double totalTripTime = tripService.calculateTotalTripTime(dealerDeliveryTO, dealersWaypointsDistance,ordersWaypointDistance);
 			
 			previousTripTotalTime = currentTripTotalTime;
