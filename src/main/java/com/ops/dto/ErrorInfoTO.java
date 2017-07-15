@@ -5,7 +5,6 @@ import java.util.List;
 
 import com.ops.constants.ErrorType;
 
-
 public class ErrorInfoTO extends ResponseTO {
 
 	/**

@@ -50,8 +50,7 @@ public class OptimalPathManager {
 		paramBuilder.append("origin=").append(waypointTO.getOrigin()).append("&destination=")
 				.append(waypointTO.getDestination()).append("&key=")
 				.append("AIzaSyBKMEIVosvAjOibv1o-DdnHiXsl2uVEORk")
-				.append("&avoid=highways")
-				.append("&waypoints=optimize:true");		
+				.append("&avoid=highways");
 		
 		for (String waypoint : waypointTO.getWaypoints())
 			paramBuilder.append("|").append(waypoint);
@@ -109,12 +108,12 @@ public class OptimalPathManager {
 			double workingHours = dealerDeliveryTO.getWorkingHours();		
 			double dealersWaypointsDistance = tripService.calculateDealersWaypointDistance(dealerDeliveryTO.getDealerList());
 			double ordersWaypointDistance = 0.0;
-			if(dealerDeliveryTO.getOrderList().size() > 22){
+			//if(dealerDeliveryTO.getOrderList().size() > 22){
 				processDijakstra(dealerDeliveryTO.getDealerList().get(dealerDeliveryTO.getDealerList().size()-1).getAddress(), dealerDeliveryTO);
 				ordersWaypointDistance = tripService.calculateOrdersWaypointDistance(dealerDeliveryTO);
-			} else {
+			/*} else {
 				ordersWaypointDistance = tripService.calculateOrdersWaypointDistance(dealerDeliveryTO, dealerDeliveryTO.getOrderList());
-			}
+			}*/
 			double totalTripTime = tripService.calculateTotalTripTime(dealerDeliveryTO, dealersWaypointsDistance,ordersWaypointDistance);
 			
 			previousTripTotalTime = currentTripTotalTime;
@@ -253,6 +252,8 @@ public class OptimalPathManager {
             }
         }
     	
+    	logger.debug(""+adjacencyMatrix);
+    	
 		TSPAlgo algorithm = new TSPAlgo();
 		List<Integer> visitNodeIndexes = algorithm.applyTsp(adjacencyMatrix);
 		visitNodeIndexes.remove(0);
@@ -262,7 +263,7 @@ public class OptimalPathManager {
 		visitNodeIndexes.forEach(idx -> {
 			sortedOrders.add(orders.get(idx -2));
 		});
-		
+				
 		Map<Integer, Double> distanceMatrixMap = new HashMap<Integer,Double>();
 		distanceMatrixMap.put(0, 0.0);
 		distanceMatrixMap.put(1, (double) adjacencyMatrix[1][visitNodeIndexes.get(0)]/1000);
@@ -274,7 +275,7 @@ public class OptimalPathManager {
 		
 		orderTripDistance += adjacencyMatrix[1][visitNodeIndexes.get(0)];
 		distanceMatrixMap.put(visitNodeIndexes.size()+1, (double) adjacencyMatrix[visitNodeIndexes.get(visitNodeIndexes.size()-1)][1]/1000);
-		orderTripDistance += adjacencyMatrix[visitNodeIndexes.get(visitNodeIndexes.size()-1)][1];
+		//orderTripDistance += adjacencyMatrix[visitNodeIndexes.get(visitNodeIndexes.size()-1)][1];
 		
 		dealerDeliveryTO.setDistanceMap(distanceMatrixMap);
 		dealerDeliveryTO.setOrderList(sortedOrders);
