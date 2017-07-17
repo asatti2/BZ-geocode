@@ -275,7 +275,7 @@ public class OptimalPathManager {
 		
 		orderTripDistance += adjacencyMatrix[1][visitNodeIndexes.get(0)];
 		distanceMatrixMap.put(visitNodeIndexes.size()+1, (double) adjacencyMatrix[visitNodeIndexes.get(visitNodeIndexes.size()-1)][1]/1000);
-		//orderTripDistance += adjacencyMatrix[visitNodeIndexes.get(visitNodeIndexes.size()-1)][1];
+		orderTripDistance += adjacencyMatrix[visitNodeIndexes.get(visitNodeIndexes.size()-1)][1];
 		
 		dealerDeliveryTO.setDistanceMap(distanceMatrixMap);
 		dealerDeliveryTO.setOrderList(sortedOrders);
