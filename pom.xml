@@ -318,7 +318,6 @@
 	  			<artifactId>commons-lang3</artifactId>
 	  			<version>${common.lang3.version}</version>
   			</dependency>
-			
   </dependencies>
 
   <build>
