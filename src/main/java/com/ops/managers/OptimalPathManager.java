@@ -50,7 +50,8 @@ public class OptimalPathManager {
 		paramBuilder.append("origin=").append(waypointTO.getOrigin()).append("&destination=")
 				.append(waypointTO.getDestination()).append("&key=")
 				.append("AIzaSyBKMEIVosvAjOibv1o-DdnHiXsl2uVEORk")
-				.append("&avoid=highways");
+				.append("&avoid=highways")
+				.append("&waypoints=optimize:false");
 		
 		for (String waypoint : waypointTO.getWaypoints())
 			paramBuilder.append("|").append(waypoint);
