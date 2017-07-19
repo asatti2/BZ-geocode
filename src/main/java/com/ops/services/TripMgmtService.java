@@ -1,5 +1,6 @@
 package com.ops.services;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -23,20 +24,22 @@ import com.ops.dto.TripTO;
 import com.ops.dto.WaypointTO;
 import com.ops.exceptions.BusinessException;
 import com.ops.managers.OptimalPathManager;
+import com.ops.utils.CommonUtility;
 import com.ops.utils.HttpConnectorUtil;
 
 public class TripMgmtService {
 
 	private static final Logger logger = LoggerFactory.getLogger(TripMgmtService.class);
 	private String dealerLastPointAddress = null;
-	private final String geoKey = "AIzaSyBKMEIVosvAjOibv1o-DdnHiXsl2uVEORk";
+	//private final String geoKey = "AIzaSyBKMEIVosvAjOibv1o-DdnHiXsl2uVEORk";
+	
 
-	private String getOptimalRoute(WaypointTO waypointTO) throws BusinessException {
+	private String getOptimalRoute(WaypointTO waypointTO) throws BusinessException, IOException {
 
 		logger.info("Fetching route..." + waypointTO + " with enabled optimization");
 		StringBuilder paramBuilder = new StringBuilder();
 		paramBuilder.append("origin=").append(waypointTO.getOrigin()).append("&destination=")
-				.append(waypointTO.getDestination()).append("&key=").append(geoKey).append("&avoid=highways")
+				.append(waypointTO.getDestination()).append("&key=").append(new CommonUtility().getApplicationProperties("geoKeyForWaypoints")).append("&avoid=highways")
 				.append("&waypoints=optimize:true");
 		waypointTO.getWaypoints().forEach(waypoint -> paramBuilder.append("|").append(waypoint));
 
@@ -69,13 +72,13 @@ public class TripMgmtService {
 		return resp;
 	}*/
 	
-	public JSONArray getDistance(String origin, String destination) throws BusinessException {
+	public JSONArray getDistance(String origin, String destination) throws BusinessException, IOException {
 		
 		StringBuilder paramBuilder = new StringBuilder();
 		
 		paramBuilder.append("origins=").append(origin)
 					.append("&destinations=").append(destination)
-					.append("&key=").append(geoKey)
+					.append("&key=").append(new CommonUtility().getApplicationProperties("geoKeyForDistance"))
 					.append("&avoid=highways");
 		
 		String resp = HttpConnectorUtil.callAPI(URLConstants.DISTANCE_MATRIX_URL, paramBuilder.toString());
@@ -137,7 +140,7 @@ public class TripMgmtService {
 		return optimizedDistanceBetweenWaypoints;
 	}
 
-	public double calculateDealersWaypointDistance(List<DealerTO> dealersList) throws JSONException, BusinessException {
+	public double calculateDealersWaypointDistance(List<DealerTO> dealersList) throws JSONException, BusinessException, IOException {
 
 		WaypointTO dealersWaypoints = new WaypointTO();
 		dealersWaypoints.setOrigin(dealersList.get(0).getAddress());
@@ -163,7 +166,7 @@ public class TripMgmtService {
 		return dealerDeliverTO.getOrderTripDistance() / 1000;
 	}
 	
-	public double calculateOrdersWaypointDistance(DealerDeliveryTO ddto, List<OrderTO> ordersList) throws JSONException, BusinessException {
+	public double calculateOrdersWaypointDistance(DealerDeliveryTO ddto, List<OrderTO> ordersList) throws JSONException, BusinessException, IOException {
 
 		WaypointTO orderWaypoints = new WaypointTO();
 		orderWaypoints.setOrigin(dealerLastPointAddress);
@@ -227,7 +230,7 @@ public class TripMgmtService {
 		return Collections.min(orderValuesList);
 	}
 
-	public void generateTripRoute(TripTO tripWaypoints) throws JSONException, BusinessException, InterruptedException {
+	public void generateTripRoute(TripTO tripWaypoints) throws JSONException, BusinessException, InterruptedException, IOException {
 
 		List<String> finalRouteData = new LinkedList<String>();
 		List<DealerTO> dealersList = tripWaypoints.getDealersList();
@@ -294,6 +297,9 @@ public class TripMgmtService {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (IOException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}

@@ -1,5 +1,6 @@
 package com.ops.managers;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -26,6 +27,7 @@ import com.ops.dto.WaypointTO;
 import com.ops.exceptions.ApplicationException;
 import com.ops.exceptions.BusinessException;
 import com.ops.services.TripMgmtService;
+import com.ops.utils.CommonUtility;
 import com.ops.utils.HttpConnectorUtil;
 import com.ops.utils.dijakstra.Edge;
 import com.ops.utils.dijakstra.TSPAlgo;
@@ -43,13 +45,13 @@ public class OptimalPathManager {
 	private TripMgmtService tripService = new TripMgmtService();
 	private int recursionIndex = 0;
 	
-	public String getWaypointLocation(WaypointTO waypointTO) throws BusinessException {
+	public String getWaypointLocation(WaypointTO waypointTO) throws BusinessException, IOException {
 		logger.info("waypointTO - " + waypointTO);
 
 		StringBuilder paramBuilder = new StringBuilder();
 		paramBuilder.append("origin=").append(waypointTO.getOrigin()).append("&destination=")
 				.append(waypointTO.getDestination()).append("&key=")
-				.append("AIzaSyBKMEIVosvAjOibv1o-DdnHiXsl2uVEORk")
+				.append(new CommonUtility().getApplicationProperties("geoKeyForWaypoints"))
 				.append("&avoid=highways")
 				.append("&waypoints=optimize:false");
 		
@@ -197,7 +199,7 @@ public class OptimalPathManager {
 		}
 	}
 	
-	private void processDijakstra(String sourceAddress, DealerDeliveryTO dealerDeliveryTO) throws BusinessException, InterruptedException{
+	private void processDijakstra(String sourceAddress, DealerDeliveryTO dealerDeliveryTO) throws BusinessException, InterruptedException, IOException{
 		
 		List<OrderTO> orders = dealerDeliveryTO.getOrderList();
 		LinkedList<OrderTO> sortedOrders = new LinkedList<OrderTO>();
@@ -222,7 +224,7 @@ public class OptimalPathManager {
 			JSONArray arr = null;
 			if(i+1 <= orders.size()-1){					
 				arr = tripService.getDistance(orders.get(i).getAddress(), prepareDestinationAddresses(i+1, orders));
-				Thread.sleep(2000);
+				Thread.sleep(1000);
 			}
 			for(int j=i+1; j<orders.size(); j++){				
 				edges.add(new Edge(i+"", orders.get(i).getOrderVertex(), orders.get(j).getOrderVertex(), arr.getJSONObject(k).getJSONObject("distance").getInt("value")));
@@ -285,7 +287,7 @@ public class OptimalPathManager {
 		dealerDeliveryTO.setOrderTripDistance(orderTripDistance);
 	}
 	
-	public DealerDeliveryTO processDijakstra(String sourceAddress, List<OrderTO> orders) throws BusinessException, InterruptedException {
+	public DealerDeliveryTO processDijakstra(String sourceAddress, List<OrderTO> orders) throws BusinessException, InterruptedException, IOException {
 		DealerDeliveryTO dealerDeliveryTO = new DealerDeliveryTO();
 		dealerDeliveryTO.setOrderList(orders);
 		processDijakstra(sourceAddress, dealerDeliveryTO);

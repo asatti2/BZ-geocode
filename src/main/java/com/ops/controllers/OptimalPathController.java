@@ -1,5 +1,6 @@
 package com.ops.controllers;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,7 +32,7 @@ public class OptimalPathController extends ResponseController {
 	private static final Logger logger = LoggerFactory.getLogger(OptimalPathController.class);
 
 	@RequestMapping(value = ApplicationConstants.WAYPOINT_URL, method = RequestMethod.POST)
-	public ResponseTO getWaypointLocation(@RequestBody WaypointTO waypointTO) throws ApplicationException, BusinessException {
+	public ResponseTO getWaypointLocation(@RequestBody WaypointTO waypointTO) throws ApplicationException, BusinessException, IOException {
 		List<String> response = new ArrayList<String>();
 			ResponseTO resp = new ResponseTO();
 			logger.info("-- Calling Waypoint API --");
