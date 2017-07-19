@@ -227,7 +227,7 @@ public class TripMgmtService {
 		return Collections.min(orderValuesList);
 	}
 
-	public void generateTripRoute(TripTO tripWaypoints) throws JSONException, BusinessException {
+	public void generateTripRoute(TripTO tripWaypoints) throws JSONException, BusinessException, InterruptedException {
 
 		List<String> finalRouteData = new LinkedList<String>();
 		List<DealerTO> dealersList = tripWaypoints.getDealersList();
@@ -288,7 +288,15 @@ public class TripMgmtService {
 	public void generateTripRoutes(List<TripTO> generatedTripsList) throws BusinessException {
 		generatedTripsList.forEach(generatedTrip -> {
 			try {
-				new TripMgmtService().generateTripRoute(generatedTrip);
+				try {
+					new TripMgmtService().generateTripRoute(generatedTrip);
+				} catch (JSONException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 			} catch (BusinessException be) {
 				try {
 					throw be;

@@ -197,7 +197,7 @@ public class OptimalPathManager {
 		}
 	}
 	
-	private void processDijakstra(String sourceAddress, DealerDeliveryTO dealerDeliveryTO) throws BusinessException{
+	private void processDijakstra(String sourceAddress, DealerDeliveryTO dealerDeliveryTO) throws BusinessException, InterruptedException{
 		
 		List<OrderTO> orders = dealerDeliveryTO.getOrderList();
 		LinkedList<OrderTO> sortedOrders = new LinkedList<OrderTO>();
@@ -211,6 +211,7 @@ public class OptimalPathManager {
 		
 		vertexes.add(new Vertex("vX", sourceAddress));
 		JSONArray arr1 = tripService.getDistance(sourceAddress, prepareDestinationAddresses(0, orders));
+		
 		for(int j=0; j<orders.size(); j++){			 
 			edges.add(new Edge("eIn", new Vertex("vX", sourceAddress), orders.get(j).getOrderVertex(), arr1.getJSONObject(j).getJSONObject("distance").getInt("value")));
 		}
@@ -221,6 +222,7 @@ public class OptimalPathManager {
 			JSONArray arr = null;
 			if(i+1 <= orders.size()-1){					
 				arr = tripService.getDistance(orders.get(i).getAddress(), prepareDestinationAddresses(i+1, orders));
+				Thread.sleep(2000);
 			}
 			for(int j=i+1; j<orders.size(); j++){				
 				edges.add(new Edge(i+"", orders.get(i).getOrderVertex(), orders.get(j).getOrderVertex(), arr.getJSONObject(k).getJSONObject("distance").getInt("value")));
@@ -283,7 +285,7 @@ public class OptimalPathManager {
 		dealerDeliveryTO.setOrderTripDistance(orderTripDistance);
 	}
 	
-	public DealerDeliveryTO processDijakstra(String sourceAddress, List<OrderTO> orders) throws BusinessException {
+	public DealerDeliveryTO processDijakstra(String sourceAddress, List<OrderTO> orders) throws BusinessException, InterruptedException {
 		DealerDeliveryTO dealerDeliveryTO = new DealerDeliveryTO();
 		dealerDeliveryTO.setOrderList(orders);
 		processDijakstra(sourceAddress, dealerDeliveryTO);
