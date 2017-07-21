@@ -1,12 +1,12 @@
 package com.ops.services;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.json.JSONArray;
@@ -24,22 +24,20 @@ import com.ops.dto.TripTO;
 import com.ops.dto.WaypointTO;
 import com.ops.exceptions.BusinessException;
 import com.ops.managers.OptimalPathManager;
-import com.ops.utils.CommonUtility;
 import com.ops.utils.HttpConnectorUtil;
 
 public class TripMgmtService {
 
 	private static final Logger logger = LoggerFactory.getLogger(TripMgmtService.class);
 	private String dealerLastPointAddress = null;
-	//private final String geoKey = "AIzaSyBKMEIVosvAjOibv1o-DdnHiXsl2uVEORk";
-	
+	private final String geoKey = "AIzaSyBKMEIVosvAjOibv1o-DdnHiXsl2uVEORk";
 
-	private String getOptimalRoute(WaypointTO waypointTO) throws BusinessException, IOException {
+	private String getOptimalRoute(WaypointTO waypointTO) throws BusinessException {
 
 		logger.info("Fetching route..." + waypointTO + " with enabled optimization");
 		StringBuilder paramBuilder = new StringBuilder();
 		paramBuilder.append("origin=").append(waypointTO.getOrigin()).append("&destination=")
-				.append(waypointTO.getDestination()).append("&key=").append(new CommonUtility().getApplicationProperties("geoKeyForWaypoints")).append("&avoid=highways")
+				.append(waypointTO.getDestination()).append("&key=").append(geoKey).append("&avoid=highways")
 				.append("&waypoints=optimize:true");
 		waypointTO.getWaypoints().forEach(waypoint -> paramBuilder.append("|").append(waypoint));
 
@@ -72,13 +70,13 @@ public class TripMgmtService {
 		return resp;
 	}*/
 	
-	public JSONArray getDistance(String origin, String destination) throws BusinessException, IOException {
+	public JSONArray getDistance(String origin, String destination) throws BusinessException {
 		
 		StringBuilder paramBuilder = new StringBuilder();
 		
 		paramBuilder.append("origins=").append(origin)
 					.append("&destinations=").append(destination)
-					.append("&key=").append(new CommonUtility().getApplicationProperties("geoKeyForDistance"))
+					.append("&key=").append("AIzaSyB9bu3dTdBK4sA27MiIfCQ2nRJWBZzhE-c")
 					.append("&avoid=highways");
 		
 		String resp = HttpConnectorUtil.callAPI(URLConstants.DISTANCE_MATRIX_URL, paramBuilder.toString());
@@ -140,7 +138,7 @@ public class TripMgmtService {
 		return optimizedDistanceBetweenWaypoints;
 	}
 
-	public double calculateDealersWaypointDistance(List<DealerTO> dealersList) throws JSONException, BusinessException, IOException {
+	public double calculateDealersWaypointDistance(List<DealerTO> dealersList) throws JSONException, BusinessException {
 
 		WaypointTO dealersWaypoints = new WaypointTO();
 		dealersWaypoints.setOrigin(dealersList.get(0).getAddress());
@@ -166,7 +164,7 @@ public class TripMgmtService {
 		return dealerDeliverTO.getOrderTripDistance() / 1000;
 	}
 	
-	public double calculateOrdersWaypointDistance(DealerDeliveryTO ddto, List<OrderTO> ordersList) throws JSONException, BusinessException, IOException {
+	public double calculateOrdersWaypointDistance(DealerDeliveryTO ddto, List<OrderTO> ordersList) throws JSONException, BusinessException {
 
 		WaypointTO orderWaypoints = new WaypointTO();
 		orderWaypoints.setOrigin(dealerLastPointAddress);
@@ -211,17 +209,72 @@ public class TripMgmtService {
 	}
 
 	public void reduceOrder(DealerDeliveryTO dataDto, List<OrderTO> removedOrdersPool,
+			List<DealerTO> removedDealersPool, int[][] masterOrderMatrix, Map<Integer, Integer> masterOrdersMap, List<Integer> removedIndixes) {
+
+		logger.info("Removing the order from the list if time is exceeding than working hours...");
+
+		List<OrderTO> ordersList = dataDto.getOrderList();
+		int minOrderValue = getLeastOrderValue(ordersList);
+		OrderTO minValOrderObj = ordersList.stream().filter(order -> order.getOrderAmount() == minOrderValue).collect(Collectors.toList()).get(0);
+		
+		List<OrderTO> ordersToBeRemoved  = fetchOrdersOfSameDistance(minValOrderObj, ordersList, masterOrderMatrix, masterOrdersMap, removedIndixes);
+		
+		ordersList.removeAll(ordersToBeRemoved);
+		dataDto.setOrderList(ordersList);
+		removedOrdersPool.addAll(ordersToBeRemoved);
+	}
+	
+	public void reduceOrder(DealerDeliveryTO dataDto, List<OrderTO> removedOrdersPool,
 			List<DealerTO> removedDealersPool) {
 
 		logger.info("Removing the order from the list if time is exceeding than working hours...");
 
 		List<OrderTO> ordersList = dataDto.getOrderList();
 		int minOrderValue = getLeastOrderValue(ordersList);
-		OrderTO minValOrderObj = ordersList.stream().filter(order -> order.getOrderAmount() == minOrderValue)
-				.collect(Collectors.toList()).get(0);
+		OrderTO minValOrderObj = ordersList.stream().filter(order -> order.getOrderAmount() == minOrderValue).collect(Collectors.toList()).get(0);
 		ordersList.remove(minValOrderObj);
 		dataDto.setOrderList(ordersList);
 		removedOrdersPool.add(minValOrderObj);
+	}
+	
+	private List<OrderTO> fetchOrdersOfSameDistance(OrderTO minValOrderObj, List<OrderTO> ordersList, int[][] masterOrderMatrix, Map<Integer,Integer> masterOrdersMap, List<Integer> removedIndixes){
+		
+		int minValOrderDistanceFromOrigin = masterOrderMatrix[1][masterOrdersMap.get(minValOrderObj.getOrderId())+2];
+		List<Integer> indexesList = new ArrayList<Integer>();
+		
+		for(int i=0; i<masterOrderMatrix.length; i++){
+			
+			for(int j=0; j<masterOrderMatrix.length; j++){
+				
+				if(masterOrderMatrix[i][j] == minValOrderDistanceFromOrigin && j > i){
+					indexesList.add(j-2);
+					removedIndixes.add(j);
+				}
+			}
+		}
+		
+		updateMatrix(masterOrderMatrix, removedIndixes);
+		
+		Set<Integer> orderIdsToBeRemoved = masterOrdersMap.entrySet().stream().filter(map -> indexesList.contains(map.getValue())).collect(Collectors.toMap(p->p.getKey(), p->p.getValue())).keySet();
+		
+		return ordersList.stream().filter(order -> orderIdsToBeRemoved.contains(order.getOrderId())).collect(Collectors.toList());
+		
+		
+	}
+	
+	private void updateMatrix(int[][] masterOrderMatrix, List<Integer> indexesList ) {
+		
+		for(int i=0; i<masterOrderMatrix.length; i++){
+			
+			if(indexesList.contains(i)){
+			
+				for(int j=0; j<masterOrderMatrix.length; j++){
+					
+					masterOrderMatrix[i][j] = 0;
+					masterOrderMatrix[j][i] = 0;
+				}
+			}
+		}
 	}
 
 	private int getLeastOrderValue(List<OrderTO> ordersList) {
@@ -230,7 +283,7 @@ public class TripMgmtService {
 		return Collections.min(orderValuesList);
 	}
 
-	public void generateTripRoute(TripTO tripWaypoints) throws JSONException, BusinessException, InterruptedException, IOException {
+	public void generateTripRoute(TripTO tripWaypoints) throws JSONException, BusinessException, InterruptedException {
 
 		List<String> finalRouteData = new LinkedList<String>();
 		List<DealerTO> dealersList = tripWaypoints.getDealersList();
@@ -293,13 +346,7 @@ public class TripMgmtService {
 			try {
 				try {
 					new TripMgmtService().generateTripRoute(generatedTrip);
-				} catch (JSONException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} catch (IOException e) {
+				} catch (JSONException | InterruptedException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}

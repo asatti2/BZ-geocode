@@ -1,6 +1,5 @@
 package com.ops.managers;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -11,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -27,11 +27,11 @@ import com.ops.dto.WaypointTO;
 import com.ops.exceptions.ApplicationException;
 import com.ops.exceptions.BusinessException;
 import com.ops.services.TripMgmtService;
-import com.ops.utils.CommonUtility;
 import com.ops.utils.HttpConnectorUtil;
 import com.ops.utils.dijakstra.Edge;
 import com.ops.utils.dijakstra.TSPAlgo;
 import com.ops.utils.dijakstra.Vertex;
+
 
 public class OptimalPathManager {
 	private static final Logger logger = LoggerFactory.getLogger(OptimalPathManager.class);
@@ -44,14 +44,18 @@ public class OptimalPathManager {
 	private List<DealerTO> originalDealersPool = null;
 	private TripMgmtService tripService = new TripMgmtService();
 	private int recursionIndex = 0;
+	private Map<Integer, Integer> masterOrdersMap =  new HashMap<Integer,Integer>();
+	int updatedAdjacencyMatrix[][] ;
+	List<Integer> removedIndixes = new ArrayList<Integer>();
 	
-	public String getWaypointLocation(WaypointTO waypointTO) throws BusinessException, IOException {
+	
+	public String getWaypointLocation(WaypointTO waypointTO) throws BusinessException {
 		logger.info("waypointTO - " + waypointTO);
 
 		StringBuilder paramBuilder = new StringBuilder();
 		paramBuilder.append("origin=").append(waypointTO.getOrigin()).append("&destination=")
 				.append(waypointTO.getDestination()).append("&key=")
-				.append(new CommonUtility().getApplicationProperties("geoKeyForWaypoints"))
+				.append("AIzaSyBKMEIVosvAjOibv1o-DdnHiXsl2uVEORk")
 				.append("&avoid=highways")
 				.append("&waypoints=optimize:false");
 		
@@ -112,9 +116,13 @@ public class OptimalPathManager {
 			double dealersWaypointsDistance = tripService.calculateDealersWaypointDistance(dealerDeliveryTO.getDealerList());
 			double ordersWaypointDistance = 0.0;
 			if(dealerDeliveryTO.getOrderList().size() > 22){
+				if(masterOrdersMap.isEmpty()){
+					prepareMasterOrdersMap(dealerDeliveryTO);
+				}
 				processDijakstra(dealerDeliveryTO.getDealerList().get(dealerDeliveryTO.getDealerList().size()-1).getAddress(), dealerDeliveryTO);
 				ordersWaypointDistance = tripService.calculateOrdersWaypointDistance(dealerDeliveryTO);
 			} else {
+				removedIndixes.clear();
 				ordersWaypointDistance = tripService.calculateOrdersWaypointDistance(dealerDeliveryTO, dealerDeliveryTO.getOrderList());
 			}
 			double totalTripTime = tripService.calculateTotalTripTime(dealerDeliveryTO, dealersWaypointsDistance,ordersWaypointDistance);
@@ -122,14 +130,26 @@ public class OptimalPathManager {
 			previousTripTotalTime = currentTripTotalTime;
 			currentTripTotalTime = totalTripTime;
 			
+			/*if(removedOrdersPool.size() > 1){
+				removedOrdersPool.forEach(removedOrder -> {
+					if(removedOrder.getTimeSpent() == 0.0){
+						removedOrder.setTimeSpent(previousTripTotalTime-currentTripTotalTime);
+					}
+				});
+			}*/
+			
 			if(removedOrdersPool.size() > 1){
 				removedOrdersPool.get(removedOrdersPool.size()-2).setTimeSpent(previousTripTotalTime-currentTripTotalTime);	
-			}	
+			}
 			
 
 			if (totalTripTime > workingHours) {
 				logger.info("Total Trip time is : " + totalTripTime + " which is " + (totalTripTime - workingHours) +" hours greater than working hours.");
-				tripService.reduceOrder(dealerDeliveryTO, removedOrdersPool, removedDealersPool);			
+				//if(dealerDeliveryTO.getOrderList().size() >  22){
+					tripService.reduceOrder(dealerDeliveryTO, removedOrdersPool, removedDealersPool, updatedAdjacencyMatrix, masterOrdersMap, removedIndixes);	
+				/*}else{
+					tripService.reduceOrder(dealerDeliveryTO, removedOrdersPool, removedDealersPool);
+				}*/
 				manageDealersAccordingToOrders(dealerDeliveryTO);
 				if(!dealerDeliveryTO.getDealerList().isEmpty() && !dealerDeliveryTO.getOrderList().isEmpty()){
 					getOptimizedTrips(dealerDeliveryTO);
@@ -142,7 +162,9 @@ public class OptimalPathManager {
 				manageDealersAccordingToOrders(dealerDeliveryTO);			
 				
 				tripService.prepareTripData(dealerDeliveryTO, currentTripTotalTime, dealersWaypointsDistance, ordersWaypointDistance, generatedTripsList, recursionIndex);
-				
+				System.out.println("REMOVED_ORDER_POOL_SIZE "+removedOrdersPool.size());
+				updatedAdjacencyMatrix = null;
+				masterOrdersMap.clear();
 				if(removedOrdersPool.size() > 0){
 					removedOrdersPool.forEach(removedOrder -> removedOrder.setTimeSpent(0));
 					previousTripTotalTime = 0;
@@ -150,13 +172,17 @@ public class OptimalPathManager {
 					dealerDeliveryTO.setOrderList(removedOrdersPool);
 					removedOrdersPool = new LinkedList<OrderTO>();
 					manageDealersAccordingToOrders(dealerDeliveryTO);
+					if(masterOrdersMap.isEmpty()){
+						prepareMasterOrdersMap(dealerDeliveryTO);
+					}
+					processDijakstra(dealerDeliveryTO.getDealerList().get(dealerDeliveryTO.getDealerList().size()-1).getAddress(), dealerDeliveryTO);
 					if(!dealerDeliveryTO.getDealerList().isEmpty() && !dealerDeliveryTO.getOrderList().isEmpty()){
 						getOptimizedTrips(dealerDeliveryTO);
 					}else{
 						throw new BusinessException(ApplicationConstants.INVALID_WORKING_HOURS);
 					}
-				}			
-				
+				}
+								
 			}
 			
 		} catch (BusinessException be){
@@ -199,7 +225,7 @@ public class OptimalPathManager {
 		}
 	}
 	
-	private void processDijakstra(String sourceAddress, DealerDeliveryTO dealerDeliveryTO) throws BusinessException, InterruptedException, IOException{
+	private void processDijakstra(String sourceAddress, DealerDeliveryTO dealerDeliveryTO) throws BusinessException, InterruptedException{
 		
 		List<OrderTO> orders = dealerDeliveryTO.getOrderList();
 		LinkedList<OrderTO> sortedOrders = new LinkedList<OrderTO>();
@@ -211,83 +237,90 @@ public class OptimalPathManager {
 			order.setOrderVertex(new Vertex(order.getOrderId()+"", order.getAddress()));
 		});
 		
-		vertexes.add(new Vertex("vX", sourceAddress));
-		JSONArray arr1 = tripService.getDistance(sourceAddress, prepareDestinationAddresses(0, orders));
+		int adjacencyMatrix[][] = null;
 		
-		for(int j=0; j<orders.size(); j++){			 
-			edges.add(new Edge("eIn", new Vertex("vX", sourceAddress), orders.get(j).getOrderVertex(), arr1.getJSONObject(j).getJSONObject("distance").getInt("value")));
-		}
-		
-		for(int i=0; i<orders.size(); i++){		
-			vertexes.add(orders.get(i).getOrderVertex());
-			int k=0;
-			JSONArray arr = null;
-			if(i+1 <= orders.size()-1){					
-				arr = tripService.getDistance(orders.get(i).getAddress(), prepareDestinationAddresses(i+1, orders));
-				Thread.sleep(1000);
+		if(updatedAdjacencyMatrix == null){
+			vertexes.add(new Vertex("vX", sourceAddress));
+			JSONArray arr1 = tripService.getDistance(sourceAddress, prepareDestinationAddresses(0, orders));
+			for(int j=0; j<orders.size(); j++){			 
+				edges.add(new Edge("eIn", new Vertex("vX", sourceAddress), orders.get(j).getOrderVertex(), arr1.getJSONObject(j).getJSONObject("distance").getInt("value")));
 			}
-			for(int j=i+1; j<orders.size(); j++){				
-				edges.add(new Edge(i+"", orders.get(i).getOrderVertex(), orders.get(j).getOrderVertex(), arr.getJSONObject(k).getJSONObject("distance").getInt("value")));
-				k++;				
-			}			
-		}
-		
-		int numberOfNodes = vertexes.size();
-		int adjacencyMatrix[][] = new int[numberOfNodes + 1][numberOfNodes + 1];
-    	int m=0;
-    	for(int i=1; i<=numberOfNodes; i++){
-    		for(int j=1; j<=numberOfNodes; j++){
-    			
-    			if(i == j) {
-    				adjacencyMatrix[i][j] = 0;
-    			} else if (i > j) {
-    				adjacencyMatrix[i][j] = adjacencyMatrix[j][i];
-    			} else {
-    				adjacencyMatrix[i][j] = edges.get(m).getWeight();
-        			m++;
-    			}
-    		}
-    	}
-    	
-    	for (int i = 1; i <= numberOfNodes; i++) {
-            for (int j = 1; j <= numberOfNodes; j++) {
-                if (adjacencyMatrix[i][j] == 1 && adjacencyMatrix[j][i] == 0) {
-                	adjacencyMatrix[j][i] = 1;
-                }
-            }
-        }
-    	
-    	logger.debug(""+adjacencyMatrix);
+			
+			for(int i=0; i<orders.size(); i++){		
+				vertexes.add(orders.get(i).getOrderVertex());
+				int k=0;
+				JSONArray arr = null;
+				if(i+1 <= orders.size()-1){					
+					arr = tripService.getDistance(orders.get(i).getAddress(), prepareDestinationAddresses(i+1, orders));
+					Thread.sleep(1000);
+				}
+				for(int j=i+1; j<orders.size(); j++){				
+					edges.add(new Edge(i+"", orders.get(i).getOrderVertex(), orders.get(j).getOrderVertex(), arr.getJSONObject(k).getJSONObject("distance").getInt("value")));
+					k++;				
+				}			
+			}
+			
+			int numberOfNodes = vertexes.size();
+			adjacencyMatrix = new int[numberOfNodes + 1][numberOfNodes + 1];
+	    	int m=0;
+	    	for(int i=1; i<=numberOfNodes; i++){
+	    		for(int j=1; j<=numberOfNodes; j++){
+	    			
+	    			if(i == j) {
+	    				adjacencyMatrix[i][j] = 0;
+	    			} else if (i > j) {
+	    				adjacencyMatrix[i][j] = adjacencyMatrix[j][i];
+	    			} else {
+	    				adjacencyMatrix[i][j] = edges.get(m).getWeight();
+	        			m++;
+	    			}
+	    		}
+	    	}
+	    	
+	    	for (int i = 1; i <= numberOfNodes; i++) {
+	            for (int j = 1; j <= numberOfNodes; j++) {
+	                if (adjacencyMatrix[i][j] == 1 && adjacencyMatrix[j][i] == 0) {
+	                	adjacencyMatrix[j][i] = 1;
+	                }
+	            }
+	        }
+	    	updatedAdjacencyMatrix = adjacencyMatrix;
+	    } 	
     	
 		TSPAlgo algorithm = new TSPAlgo();
-		List<Integer> visitNodeIndexes = algorithm.applyTsp(adjacencyMatrix);
+		List<Integer> visitNodeIndexes = algorithm.applyTsp(updatedAdjacencyMatrix);
 		visitNodeIndexes.remove(0);
-		visitNodeIndexes.remove(0);
+		//visitNodeIndexes.remove(0);
+		visitNodeIndexes.removeAll(removedIndixes);
+		visitNodeIndexes.removeIf(idx -> idx == 0);
 		Collections.reverse(visitNodeIndexes);
-	
-		visitNodeIndexes.forEach(idx -> {
-			sortedOrders.add(orders.get(idx -2));
+		//removedIndixes.clear();
+		LinkedList<Integer> tmpList =  new LinkedList<Integer>();
+		IntStream.range(0, visitNodeIndexes.size()).forEach(idx -> {
+			tmpList.add(visitNodeIndexes.get(idx)-2);
 		});
-				
+		Set<Integer> ordersToSort = masterOrdersMap.entrySet().stream().filter(map -> tmpList.contains(map.getValue())).collect(Collectors.toMap(p->p.getKey(), p->p.getValue())).keySet();
+		sortedOrders.addAll(orders.stream().filter(order -> ordersToSort.contains(order.getOrderId())).collect(Collectors.toList()));
+		
 		Map<Integer, Double> distanceMatrixMap = new HashMap<Integer,Double>();
-		distanceMatrixMap.put(0, 0.0);
-		distanceMatrixMap.put(1, (double) adjacencyMatrix[1][visitNodeIndexes.get(0)]/1000);
+		//distanceMatrixMap.put(0, 0.0);
+		//distanceMatrixMap.put(1, (double) adjacencyMatrix[1][visitNodeIndexes.get(0)]/1000);
 		for(int k=0; k<=visitNodeIndexes.size()-2; k++){
-				double relativeDistance = adjacencyMatrix[visitNodeIndexes.get(k)][visitNodeIndexes.get(k+1)];
-				distanceMatrixMap.put(k+2, relativeDistance/1000);
+				double relativeDistance = updatedAdjacencyMatrix[visitNodeIndexes.get(k)][visitNodeIndexes.get(k+1)];
+				//distanceMatrixMap.put(k+2, relativeDistance/1000);
 				orderTripDistance += relativeDistance; 
 		}
 		
-		orderTripDistance += adjacencyMatrix[1][visitNodeIndexes.get(0)];
-		distanceMatrixMap.put(visitNodeIndexes.size()+1, (double) adjacencyMatrix[visitNodeIndexes.get(visitNodeIndexes.size()-1)][1]/1000);
-		orderTripDistance += adjacencyMatrix[visitNodeIndexes.get(visitNodeIndexes.size()-1)][1];
+		orderTripDistance += updatedAdjacencyMatrix[1][visitNodeIndexes.get(0)];
+		//distanceMatrixMap.put(visitNodeIndexes.size()+1, (double) adjacencyMatrix[visitNodeIndexes.get(visitNodeIndexes.size()-1)][1]/1000);
+		orderTripDistance += updatedAdjacencyMatrix[visitNodeIndexes.get(visitNodeIndexes.size()-1)][1];
 		
 		dealerDeliveryTO.setDistanceMap(distanceMatrixMap);
 		dealerDeliveryTO.setOrderList(sortedOrders);
 		dealerDeliveryTO.setOrderTripDistance(orderTripDistance);
 	}
 	
-	public DealerDeliveryTO processDijakstra(String sourceAddress, List<OrderTO> orders) throws BusinessException, InterruptedException, IOException {
+	public DealerDeliveryTO processDijakstra(String sourceAddress, List<OrderTO> orders) throws BusinessException, InterruptedException {
 		DealerDeliveryTO dealerDeliveryTO = new DealerDeliveryTO();
 		dealerDeliveryTO.setOrderList(orders);
 		processDijakstra(sourceAddress, dealerDeliveryTO);
@@ -306,4 +339,11 @@ public class OptimalPathManager {
 		return addressBuilder.toString();		
 	}
 	
+	
+	public void prepareMasterOrdersMap(DealerDeliveryTO dealerDeliveryTO){
+		List<OrderTO> orders  = dealerDeliveryTO.getOrderList(); 
+		IntStream.range(0, orders.size()).forEach(idx ->{
+			masterOrdersMap.put(orders.get(idx).getOrderId(), idx);
+		});
+	}
 }
