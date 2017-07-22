@@ -124,8 +124,8 @@ public class OptimalPathManager {
 			if(masterOrdersMap.isEmpty()){
 				prepareMasterOrdersMap(dealerDeliveryTO);
 			}
+			processDijakstra(dealerDeliveryTO.getDealerList().get(dealerDeliveryTO.getDealerList().size()-1).getAddress(), dealerDeliveryTO);
 			if(dealerDeliveryTO.getOrderList().size() > 22){
-				processDijakstra(dealerDeliveryTO.getDealerList().get(dealerDeliveryTO.getDealerList().size()-1).getAddress(), dealerDeliveryTO);
 				ordersWaypointDistance = tripService.calculateOrdersWaypointDistance(dealerDeliveryTO);
 			} else {
 				removedIndixes.clear();
