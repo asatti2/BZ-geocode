@@ -81,6 +81,7 @@ public class TestDemo
                     {
                         adjacency_matrix[j][i] = 1;
                     }
+                    
                 }
             }
             System.out.println("the citys are visited as follows");

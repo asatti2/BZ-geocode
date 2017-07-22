@@ -1,5 +1,6 @@
 package com.ops.managers;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -27,6 +28,7 @@ import com.ops.dto.WaypointTO;
 import com.ops.exceptions.ApplicationException;
 import com.ops.exceptions.BusinessException;
 import com.ops.services.TripMgmtService;
+import com.ops.utils.CommonUtility;
 import com.ops.utils.HttpConnectorUtil;
 import com.ops.utils.dijakstra.Edge;
 import com.ops.utils.dijakstra.TSPAlgo;
@@ -39,23 +41,24 @@ public class OptimalPathManager {
 	private double currentTripTotalTime = 0;
 	private double previousTripTotalTime = 0;
 	private List<OrderTO> removedOrdersPool = new LinkedList<OrderTO>();
+	private List<OrderTO> tempOrdersPool = new LinkedList<OrderTO>();
 	private List<DealerTO> removedDealersPool = new LinkedList<DealerTO>();
 	private List<TripTO> generatedTripsList = new LinkedList<TripTO>();
 	private List<DealerTO> originalDealersPool = null;
 	private TripMgmtService tripService = new TripMgmtService();
-	private int recursionIndex = 0;
+	private int tripIndex = 0;
 	private Map<Integer, Integer> masterOrdersMap =  new HashMap<Integer,Integer>();
 	int updatedAdjacencyMatrix[][] ;
 	List<Integer> removedIndixes = new ArrayList<Integer>();
 	
 	
-	public String getWaypointLocation(WaypointTO waypointTO) throws BusinessException {
+	public String getWaypointLocation(WaypointTO waypointTO) throws BusinessException, IOException {
 		logger.info("waypointTO - " + waypointTO);
 
 		StringBuilder paramBuilder = new StringBuilder();
 		paramBuilder.append("origin=").append(waypointTO.getOrigin()).append("&destination=")
 				.append(waypointTO.getDestination()).append("&key=")
-				.append("AIzaSyBKMEIVosvAjOibv1o-DdnHiXsl2uVEORk")
+				.append(new CommonUtility().getApplicationProperties("geoKeyForWaypoints"))
 				.append("&avoid=highways")
 				.append("&waypoints=optimize:false");
 		
@@ -79,6 +82,12 @@ public class OptimalPathManager {
 		originalDealersPool = dealerDeliveryTO.getDealerList();		
 		getOptimizedTrips(dealerDeliveryTO);
 		tripService.generateTripRoutes(generatedTripsList);
+		generatedTripsList.forEach(generatedTrip->{
+			generatedTrip.getOrdersList().forEach(order ->{
+				System.out.println(order.getAddress());
+			});
+			System.out.println("================================");
+		});
 		return generatedTripsList;
 	}
 	
@@ -106,19 +115,16 @@ public class OptimalPathManager {
 		}		
 	}
 
-	private void getOptimizedTrips(DealerDeliveryTO dealerDeliveryTO) throws BusinessException, ApplicationException {
-		
-		recursionIndex++;
-		
+	private void getOptimizedTrips(DealerDeliveryTO dealerDeliveryTO) throws BusinessException, ApplicationException {		
 		try{
 			
 			double workingHours = dealerDeliveryTO.getWorkingHours();		
 			double dealersWaypointsDistance = tripService.calculateDealersWaypointDistance(dealerDeliveryTO.getDealerList());
 			double ordersWaypointDistance = 0.0;
+			if(masterOrdersMap.isEmpty()){
+				prepareMasterOrdersMap(dealerDeliveryTO);
+			}
 			if(dealerDeliveryTO.getOrderList().size() > 22){
-				if(masterOrdersMap.isEmpty()){
-					prepareMasterOrdersMap(dealerDeliveryTO);
-				}
 				processDijakstra(dealerDeliveryTO.getDealerList().get(dealerDeliveryTO.getDealerList().size()-1).getAddress(), dealerDeliveryTO);
 				ordersWaypointDistance = tripService.calculateOrdersWaypointDistance(dealerDeliveryTO);
 			} else {
@@ -129,27 +135,27 @@ public class OptimalPathManager {
 			
 			previousTripTotalTime = currentTripTotalTime;
 			currentTripTotalTime = totalTripTime;
+
 			
-			/*if(removedOrdersPool.size() > 1){
-				removedOrdersPool.forEach(removedOrder -> {
-					if(removedOrder.getTimeSpent() == 0.0){
-						removedOrder.setTimeSpent(previousTripTotalTime-currentTripTotalTime);
-					}
-				});
-			}*/
+			double timeDifference = previousTripTotalTime-currentTripTotalTime;
 			
-			if(removedOrdersPool.size() > 1){
-				removedOrdersPool.get(removedOrdersPool.size()-2).setTimeSpent(previousTripTotalTime-currentTripTotalTime);	
+			if(timeDifference <= 0) {
+				timeDifference = 0.0;
+			}	else {
+				for(OrderTO tempOrder : tempOrdersPool) {
+					tempOrder.setTimeSpent(timeDifference);
+				}
 			}
-			
+			removedOrdersPool.addAll(tempOrdersPool);
+			tempOrdersPool.clear();
 
 			if (totalTripTime > workingHours) {
 				logger.info("Total Trip time is : " + totalTripTime + " which is " + (totalTripTime - workingHours) +" hours greater than working hours.");
-				//if(dealerDeliveryTO.getOrderList().size() >  22){
-					tripService.reduceOrder(dealerDeliveryTO, removedOrdersPool, removedDealersPool, updatedAdjacencyMatrix, masterOrdersMap, removedIndixes);	
-				/*}else{
-					tripService.reduceOrder(dealerDeliveryTO, removedOrdersPool, removedDealersPool);
-				}*/
+					
+					tripService.reduceOrder(timeDifference,dealerDeliveryTO, tempOrdersPool, removedDealersPool, updatedAdjacencyMatrix, masterOrdersMap, removedIndixes);
+					int[][] updatedArr = tripService.updateMatrix(updatedAdjacencyMatrix, removedIndixes);
+					updatedAdjacencyMatrix = null;
+					updatedAdjacencyMatrix = updatedArr;
 				manageDealersAccordingToOrders(dealerDeliveryTO);
 				if(!dealerDeliveryTO.getDealerList().isEmpty() && !dealerDeliveryTO.getOrderList().isEmpty()){
 					getOptimizedTrips(dealerDeliveryTO);
@@ -157,11 +163,12 @@ public class OptimalPathManager {
 					throw new BusinessException(ApplicationConstants.INVALID_WORKING_HOURS);
 				}
 			} else {
+
 				logger.info("Total Trip time is : " + totalTripTime + " which is " + (workingHours - totalTripTime) +" hours less than working hours.");
 				enhanceTripIfPossible(dealerDeliveryTO);
 				manageDealersAccordingToOrders(dealerDeliveryTO);			
 				
-				tripService.prepareTripData(dealerDeliveryTO, currentTripTotalTime, dealersWaypointsDistance, ordersWaypointDistance, generatedTripsList, recursionIndex);
+				tripService.prepareTripData(dealerDeliveryTO, currentTripTotalTime, dealersWaypointsDistance, ordersWaypointDistance, generatedTripsList, tripIndex);
 				System.out.println("REMOVED_ORDER_POOL_SIZE "+removedOrdersPool.size());
 				updatedAdjacencyMatrix = null;
 				masterOrdersMap.clear();
@@ -225,7 +232,7 @@ public class OptimalPathManager {
 		}
 	}
 	
-	private void processDijakstra(String sourceAddress, DealerDeliveryTO dealerDeliveryTO) throws BusinessException, InterruptedException{
+	private void processDijakstra(String sourceAddress, DealerDeliveryTO dealerDeliveryTO) throws BusinessException, InterruptedException, IOException{
 		
 		List<OrderTO> orders = dealerDeliveryTO.getOrderList();
 		LinkedList<OrderTO> sortedOrders = new LinkedList<OrderTO>();
@@ -252,7 +259,7 @@ public class OptimalPathManager {
 				JSONArray arr = null;
 				if(i+1 <= orders.size()-1){					
 					arr = tripService.getDistance(orders.get(i).getAddress(), prepareDestinationAddresses(i+1, orders));
-					Thread.sleep(1000);
+					Thread.sleep(Integer.parseInt(new CommonUtility().getApplicationProperties("threadSleepTime")));
 				}
 				for(int j=i+1; j<orders.size(); j++){				
 					edges.add(new Edge(i+"", orders.get(i).getOrderVertex(), orders.get(j).getOrderVertex(), arr.getJSONObject(k).getJSONObject("distance").getInt("value")));
@@ -289,12 +296,11 @@ public class OptimalPathManager {
     	
 		TSPAlgo algorithm = new TSPAlgo();
 		List<Integer> visitNodeIndexes = algorithm.applyTsp(updatedAdjacencyMatrix);
-		visitNodeIndexes.remove(0);
-		//visitNodeIndexes.remove(0);
-		visitNodeIndexes.removeAll(removedIndixes);
+		visitNodeIndexes.remove(0);		
 		visitNodeIndexes.removeIf(idx -> idx == 0);
+		//visitNodeIndexes.removeAll(removedIndixes);
 		Collections.reverse(visitNodeIndexes);
-		//removedIndixes.clear();
+		removedIndixes.clear();
 		LinkedList<Integer> tmpList =  new LinkedList<Integer>();
 		IntStream.range(0, visitNodeIndexes.size()).forEach(idx -> {
 			tmpList.add(visitNodeIndexes.get(idx)-2);
@@ -307,6 +313,7 @@ public class OptimalPathManager {
 		//distanceMatrixMap.put(1, (double) adjacencyMatrix[1][visitNodeIndexes.get(0)]/1000);
 		for(int k=0; k<=visitNodeIndexes.size()-2; k++){
 				double relativeDistance = updatedAdjacencyMatrix[visitNodeIndexes.get(k)][visitNodeIndexes.get(k+1)];
+				System.out.println(relativeDistance +":");
 				//distanceMatrixMap.put(k+2, relativeDistance/1000);
 				orderTripDistance += relativeDistance; 
 		}
@@ -320,10 +327,12 @@ public class OptimalPathManager {
 		dealerDeliveryTO.setOrderTripDistance(orderTripDistance);
 	}
 	
-	public DealerDeliveryTO processDijakstra(String sourceAddress, List<OrderTO> orders) throws BusinessException, InterruptedException {
+	public DealerDeliveryTO processDijakstra(String sourceAddress, List<OrderTO> orders) throws BusinessException, InterruptedException, IOException {
 		DealerDeliveryTO dealerDeliveryTO = new DealerDeliveryTO();
 		dealerDeliveryTO.setOrderList(orders);
-		processDijakstra(sourceAddress, dealerDeliveryTO);
+		if(masterOrdersMap.isEmpty()){
+			prepareMasterOrdersMap(dealerDeliveryTO);
+		}		processDijakstra(sourceAddress, dealerDeliveryTO);
 		return dealerDeliveryTO;
 	}
 	
