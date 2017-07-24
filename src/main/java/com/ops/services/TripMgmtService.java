@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -51,25 +52,6 @@ public class TripMgmtService {
 
 		return resp;
 	}
-
-	/*private String getCustomizedOptimalRoute(WaypointTO waypointTO) throws BusinessException {
-
-		logger.info("Fetching route..." + waypointTO + " with disabled optimization");
-		StringBuilder paramBuilder = new StringBuilder();
-		paramBuilder.append("origin=").append(waypointTO.getOrigin()).append("&destination=")
-				.append(waypointTO.getDestination()).append("&key=").append(geoKey).append("&avoid=highways")
-				.append("&waypoints=optimize:false");
-		waypointTO.getWaypoints().forEach(waypoint -> paramBuilder.append("|").append(waypoint));
-
-		String resp = HttpConnectorUtil.callAPI(URLConstants.WAYPOINT_URL, paramBuilder.toString());
-
-		JSONObject jsonObj = new JSONObject(resp);
-		if (!"OK".equals(jsonObj.get("status").toString())) {
-			throw new BusinessException(analyzeStatusCode(jsonObj.get("status").toString()));
-		}
-
-		return resp;
-	}*/
 	
 	public JSONArray getDistance(String origin, String destination) throws BusinessException, IOException {
 		
@@ -244,7 +226,8 @@ public class TripMgmtService {
 		
 		int minValOrderDistanceFromOrigin = masterOrderMatrix[1][masterOrdersMap.get(minValOrderObj.getOrderId())+2];
 		removedIndixes.clear();
-		List<Integer> indexesList = new ArrayList<Integer>();
+		Set<Integer> indexesList = new HashSet<Integer>();
+		Set<Integer> rIndexes = new HashSet<Integer>();
 		
 		for(int i=0; i<masterOrderMatrix.length; i++){
 			
@@ -252,11 +235,13 @@ public class TripMgmtService {
 				
 				if(masterOrderMatrix[i][j] == minValOrderDistanceFromOrigin && j > i){
 					indexesList.add(j-2);
-					removedIndixes.add(j);
+					rIndexes.add(j);
 				}
 				
 			}
 		}
+		
+		removedIndixes.addAll(rIndexes);
 				
 		Set<Integer> orderIdsToBeRemoved = masterOrdersMap.entrySet().stream().filter(map -> indexesList.contains(map.getValue())).collect(Collectors.toMap(p->p.getKey(), p->p.getValue())).keySet();
 		
@@ -267,7 +252,7 @@ public class TripMgmtService {
 	
 	public int[][] updateMatrix(int[][] masterOrderMatrix, List<Integer> indexesList ) {
 
-	        int destinationarr[][] = new int[masterOrderMatrix.length - indexesList.size() +1][masterOrderMatrix.length - indexesList.size()+1];
+	        int destinationarr[][] = new int[masterOrderMatrix.length - indexesList.size()][masterOrderMatrix.length - indexesList.size()];
 
 	        int p = 0;
 	        

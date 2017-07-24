@@ -88,7 +88,7 @@ public class OptimalPathController extends ResponseController {
 	}
 	
 	@RequestMapping(value = ApplicationConstants.OPTIMAL_PATH, method = RequestMethod.POST)
-	public ResponseTO getDealersDeliveryOptimalPath(@RequestBody DealerDeliveryTO dealerDeliveryTO)  throws ApplicationException, BusinessException {
+	public ResponseTO getDealersDeliveryOptimalPath(@RequestBody DealerDeliveryTO dealerDeliveryTO)  throws ApplicationException, BusinessException, IOException, NumberFormatException, InterruptedException {
 		
 			logger.info("-- Calling Optimal Trips API --");
 			

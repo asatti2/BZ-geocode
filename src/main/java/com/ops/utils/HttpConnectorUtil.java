@@ -32,6 +32,11 @@ public class HttpConnectorUtil {
 			in.close();
 		} catch(Exception ex) {
 			System.out.println(ex.getMessage());
+			try{
+				callAPI(url,params);
+			}catch(Exception e){
+				System.out.println(ex.getMessage());
+			}
 		}
 
 		return response.toString();

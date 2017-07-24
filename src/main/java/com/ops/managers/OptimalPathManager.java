@@ -30,7 +30,6 @@ import com.ops.exceptions.BusinessException;
 import com.ops.services.TripMgmtService;
 import com.ops.utils.CommonUtility;
 import com.ops.utils.HttpConnectorUtil;
-import com.ops.utils.dijakstra.Edge;
 import com.ops.utils.dijakstra.TSPAlgo;
 import com.ops.utils.dijakstra.Vertex;
 
@@ -49,6 +48,7 @@ public class OptimalPathManager {
 	private int tripIndex = 0;
 	private Map<Integer, Integer> masterOrdersMap =  new HashMap<Integer,Integer>();
 	int updatedAdjacencyMatrix[][] ;
+	int constantMatrixMap[][];
 	List<Integer> removedIndixes = new ArrayList<Integer>();
 	
 	
@@ -76,10 +76,12 @@ public class OptimalPathManager {
 	}
 
 	
-	public List<TripTO> processTrips(DealerDeliveryTO dealerDeliveryTO) throws BusinessException, ApplicationException {
+	public List<TripTO> processTrips(DealerDeliveryTO dealerDeliveryTO) throws BusinessException, ApplicationException, IOException, NumberFormatException, InterruptedException {
 		logger.info("Request recieved to fetch trips...");
 		validateDealersOrdersIds(dealerDeliveryTO);
-		originalDealersPool = dealerDeliveryTO.getDealerList();		
+		originalDealersPool = dealerDeliveryTO.getDealerList();
+		updateOrdersPoolWithIndexes(dealerDeliveryTO.getOrderList());
+		prepareConstantMatrixData(dealerDeliveryTO);
 		getOptimizedTrips(dealerDeliveryTO);
 		tripService.generateTripRoutes(generatedTripsList);
 		generatedTripsList.forEach(generatedTrip->{
@@ -115,6 +117,53 @@ public class OptimalPathManager {
 		}		
 	}
 
+	public void updateOrdersPoolWithIndexes(List<OrderTO> orders){
+		
+		IntStream.range(0, orders.size()).forEach(idx -> {
+			orders.get(idx).setMatrixIndex(idx+2);
+			orders.get(idx).setOrderVertex(new Vertex(orders.get(idx).getOrderId()+"", orders.get(idx).getAddress()));			
+		});
+	}
+	
+	public void prepareConstantMatrixData(DealerDeliveryTO dealerDeliveryTO) throws BusinessException, IOException, NumberFormatException, InterruptedException{
+		
+		List<OrderTO> orders = dealerDeliveryTO.getOrderList();		
+		String destinationAddresses = prepareDestinationAddresses(orders);
+		constantMatrixMap = new int[orders.size()+2][orders.size()+2];
+		for(int i=0; i<orders.size(); i++){
+			JSONArray arr = tripService.getDistance(orders.get(i).getAddress(), destinationAddresses);
+			for(int j=0; j<orders.size(); j++){
+				int distance = arr.getJSONObject(j).getJSONObject("distance").getInt("value");
+				constantMatrixMap[orders.get(i).getMatrixIndex()][orders.get(j).getMatrixIndex()] = distance;
+			}
+			Thread.sleep(Integer.parseInt(new CommonUtility().getApplicationProperties("threadSleepTime")));			
+		}		
+	}
+	
+	public void updateAdjMatrixDataWithSourceDistances(int[][] adjMatrix, String sourceAddress, DealerDeliveryTO dealerDeliveryTO) throws BusinessException, IOException{
+		
+		List<OrderTO> orders = dealerDeliveryTO.getOrderList();	
+		String destinationAddresses = prepareDestinationAddresses(dealerDeliveryTO.getOrderList());
+		JSONArray arr = tripService.getDistance(sourceAddress, sourceAddress.concat("|"+destinationAddresses));
+			for(int i=0; i<=orders.size(); i++){				
+				int distance = arr.getJSONObject(i).getJSONObject("distance").getInt("value");
+				adjMatrix[1][i+1] = distance;
+				adjMatrix[i+1][1] = distance;
+			}
+	}
+	
+	public int[][] prepareAdjMatrix(String sourceAddress, DealerDeliveryTO dealerDeliveryTO) throws BusinessException, IOException{
+		List<OrderTO> orders = dealerDeliveryTO.getOrderList();
+		int adjMatrix[][] = new int[orders.size()+2][orders.size()+2];
+		for(int i=0; i<orders.size(); i++){
+			for(int j=0; j<orders.size(); j++){
+				adjMatrix[i+2][j+2] = constantMatrixMap[orders.get(i).getMatrixIndex()][orders.get(j).getMatrixIndex()];
+			}
+		}
+		updateAdjMatrixDataWithSourceDistances(adjMatrix, sourceAddress, dealerDeliveryTO);
+		return adjMatrix;
+	}
+	
 	private void getOptimizedTrips(DealerDeliveryTO dealerDeliveryTO) throws BusinessException, ApplicationException {		
 		try{
 			
@@ -125,12 +174,12 @@ public class OptimalPathManager {
 				prepareMasterOrdersMap(dealerDeliveryTO);
 			}
 			processDijakstra(dealerDeliveryTO.getDealerList().get(dealerDeliveryTO.getDealerList().size()-1).getAddress(), dealerDeliveryTO);
-			if(dealerDeliveryTO.getOrderList().size() > 22){
+			//if(dealerDeliveryTO.getOrderList().size() > 22){
 				ordersWaypointDistance = tripService.calculateOrdersWaypointDistance(dealerDeliveryTO);
-			} else {
+			/*} else {
 				removedIndixes.clear();
 				ordersWaypointDistance = tripService.calculateOrdersWaypointDistance(dealerDeliveryTO, dealerDeliveryTO.getOrderList());
-			}
+			}*/
 			double totalTripTime = tripService.calculateTotalTripTime(dealerDeliveryTO, dealersWaypointsDistance,ordersWaypointDistance);
 			
 			previousTripTotalTime = currentTripTotalTime;
@@ -236,69 +285,16 @@ public class OptimalPathManager {
 		
 		List<OrderTO> orders = dealerDeliveryTO.getOrderList();
 		LinkedList<OrderTO> sortedOrders = new LinkedList<OrderTO>();
-		List<Vertex> vertexes = new ArrayList<Vertex>();
-		List<Edge> edges = new ArrayList<Edge>();
-		double orderTripDistance = 0.0;
-		
-		orders.forEach(order -> {
-			order.setOrderVertex(new Vertex(order.getOrderId()+"", order.getAddress()));
-		});
-		
-		int adjacencyMatrix[][] = null;
+		double orderTripDistance = 0.0;		
 		
 		if(updatedAdjacencyMatrix == null){
-			vertexes.add(new Vertex("vX", sourceAddress));
-			JSONArray arr1 = tripService.getDistance(sourceAddress, prepareDestinationAddresses(0, orders));
-			for(int j=0; j<orders.size(); j++){			 
-				edges.add(new Edge("eIn", new Vertex("vX", sourceAddress), orders.get(j).getOrderVertex(), arr1.getJSONObject(j).getJSONObject("distance").getInt("value")));
-			}
-			
-			for(int i=0; i<orders.size(); i++){		
-				vertexes.add(orders.get(i).getOrderVertex());
-				int k=0;
-				JSONArray arr = null;
-				if(i+1 <= orders.size()-1){					
-					arr = tripService.getDistance(orders.get(i).getAddress(), prepareDestinationAddresses(i+1, orders));
-					Thread.sleep(Integer.parseInt(new CommonUtility().getApplicationProperties("threadSleepTime")));
-				}
-				for(int j=i+1; j<orders.size(); j++){				
-					edges.add(new Edge(i+"", orders.get(i).getOrderVertex(), orders.get(j).getOrderVertex(), arr.getJSONObject(k).getJSONObject("distance").getInt("value")));
-					k++;				
-				}			
-			}
-			
-			int numberOfNodes = vertexes.size();
-			adjacencyMatrix = new int[numberOfNodes + 1][numberOfNodes + 1];
-	    	int m=0;
-	    	for(int i=1; i<=numberOfNodes; i++){
-	    		for(int j=1; j<=numberOfNodes; j++){
-	    			
-	    			if(i == j) {
-	    				adjacencyMatrix[i][j] = 0;
-	    			} else if (i > j) {
-	    				adjacencyMatrix[i][j] = adjacencyMatrix[j][i];
-	    			} else {
-	    				adjacencyMatrix[i][j] = edges.get(m).getWeight();
-	        			m++;
-	    			}
-	    		}
-	    	}
-	    	
-	    	for (int i = 1; i <= numberOfNodes; i++) {
-	            for (int j = 1; j <= numberOfNodes; j++) {
-	                if (adjacencyMatrix[i][j] == 1 && adjacencyMatrix[j][i] == 0) {
-	                	adjacencyMatrix[j][i] = 1;
-	                }
-	            }
-	        }
-	    	updatedAdjacencyMatrix = adjacencyMatrix;
+	    	updatedAdjacencyMatrix = prepareAdjMatrix(sourceAddress, dealerDeliveryTO);
 	    } 	
     	
 		TSPAlgo algorithm = new TSPAlgo();
 		List<Integer> visitNodeIndexes = algorithm.applyTsp(updatedAdjacencyMatrix);
 		visitNodeIndexes.remove(0);		
 		visitNodeIndexes.removeIf(idx -> idx == 0);
-		//visitNodeIndexes.removeAll(removedIndixes);
 		Collections.reverse(visitNodeIndexes);
 		removedIndixes.clear();
 		LinkedList<Integer> tmpList =  new LinkedList<Integer>();
@@ -309,17 +305,12 @@ public class OptimalPathManager {
 		sortedOrders.addAll(orders.stream().filter(order -> ordersToSort.contains(order.getOrderId())).collect(Collectors.toList()));
 		
 		Map<Integer, Double> distanceMatrixMap = new HashMap<Integer,Double>();
-		//distanceMatrixMap.put(0, 0.0);
-		//distanceMatrixMap.put(1, (double) adjacencyMatrix[1][visitNodeIndexes.get(0)]/1000);
 		for(int k=0; k<=visitNodeIndexes.size()-2; k++){
 				double relativeDistance = updatedAdjacencyMatrix[visitNodeIndexes.get(k)][visitNodeIndexes.get(k+1)];
-				System.out.println(relativeDistance +":");
-				//distanceMatrixMap.put(k+2, relativeDistance/1000);
 				orderTripDistance += relativeDistance; 
 		}
 		
 		orderTripDistance += updatedAdjacencyMatrix[1][visitNodeIndexes.get(0)];
-		//distanceMatrixMap.put(visitNodeIndexes.size()+1, (double) adjacencyMatrix[visitNodeIndexes.get(visitNodeIndexes.size()-1)][1]/1000);
 		orderTripDistance += updatedAdjacencyMatrix[visitNodeIndexes.get(visitNodeIndexes.size()-1)][1];
 		
 		dealerDeliveryTO.setDistanceMap(distanceMatrixMap);
@@ -336,15 +327,12 @@ public class OptimalPathManager {
 		return dealerDeliveryTO;
 	}
 	
-	public String prepareDestinationAddresses(int initIdx, List<OrderTO> orders){
+	public String prepareDestinationAddresses(List<OrderTO> orders){
 		StringBuilder addressBuilder = new StringBuilder();
-		if(initIdx <= orders.size()-1){
-			for(int j=initIdx; j<orders.size(); j++){
+			for(int j=0; j<orders.size(); j++){
 				addressBuilder.append(orders.get(j).getAddress()).append("|");
 			}
 			addressBuilder.deleteCharAt(addressBuilder.length()-1);
-		}	
-		
 		return addressBuilder.toString();		
 	}
 	

@@ -14,11 +14,14 @@ public class OrderTO {
 	private Vertex orderVertex;
 	
 	private double timeSpent;
+	private int matrixIndex;	
 	
-	
-	
-	
-	
+	public int getMatrixIndex() {
+		return matrixIndex;
+	}
+	public void setMatrixIndex(int matrixIndex) {
+		this.matrixIndex = matrixIndex;
+	}
 	public Vertex getOrderVertex() {
 		return orderVertex;
 	}
