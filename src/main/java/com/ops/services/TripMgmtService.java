@@ -197,11 +197,13 @@ public class TripMgmtService {
 		logger.info("Removing the order from the list if time is exceeding than working hours...");
 
 		List<OrderTO> ordersList = dataDto.getOrderList();
+		System.out.println("ORDERLISTSIZE#"+ordersList.size());
 		int minOrderValue = getLeastOrderValue(ordersList);
+		System.out.println("MINORDERVALUE"+minOrderValue);
 		OrderTO minValOrderObj = ordersList.stream().filter(order -> order.getOrderAmount() == minOrderValue).collect(Collectors.toList()).get(0);
 		
 		List<OrderTO> ordersToBeRemoved  = fetchOrdersOfSameDistance(minValOrderObj, ordersList, masterOrderMatrix, masterOrdersMap, removedIndixes);
-		
+		System.out.println("ORDERREMOVEDLISTSIZE#"+ordersToBeRemoved.size());
 		ordersList.removeAll(ordersToBeRemoved);
 		dataDto.setOrderList(ordersList);		
 		removedOrdersPool.addAll(ordersToBeRemoved);
@@ -225,6 +227,7 @@ public class TripMgmtService {
 	private List<OrderTO> fetchOrdersOfSameDistance(OrderTO minValOrderObj, List<OrderTO> ordersList, int[][] masterOrderMatrix, Map<Integer,Integer> masterOrdersMap, List<Integer> removedIndixes){
 		
 		int minValOrderDistanceFromOrigin = masterOrderMatrix[1][masterOrdersMap.get(minValOrderObj.getOrderId())+2];
+		System.out.println("MINORDERDISTANCEFROMORIGIN"+minValOrderDistanceFromOrigin);
 		removedIndixes.clear();
 		Set<Integer> indexesList = new HashSet<Integer>();
 		Set<Integer> rIndexes = new HashSet<Integer>();
@@ -233,7 +236,7 @@ public class TripMgmtService {
 			
 			for(int j=0; j<masterOrderMatrix.length; j++){
 				
-				if(masterOrderMatrix[i][j] == minValOrderDistanceFromOrigin && j > i){
+				if(masterOrderMatrix[i][j] == minValOrderDistanceFromOrigin && j > i && i!=0){
 					indexesList.add(j-2);
 					rIndexes.add(j);
 				}
@@ -242,8 +245,11 @@ public class TripMgmtService {
 		}
 		
 		removedIndixes.addAll(rIndexes);
+		
+		System.out.println("REMOVEDINDEXES"+removedIndixes);
 				
 		Set<Integer> orderIdsToBeRemoved = masterOrdersMap.entrySet().stream().filter(map -> indexesList.contains(map.getValue())).collect(Collectors.toMap(p->p.getKey(), p->p.getValue())).keySet();
+		
 		
 		return ordersList.stream().filter(order -> orderIdsToBeRemoved.contains(order.getOrderId())).collect(Collectors.toList());
 		

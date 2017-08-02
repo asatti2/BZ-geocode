@@ -23,6 +23,7 @@ import com.ops.constants.URLConstants;
 import com.ops.dto.DealerDeliveryTO;
 import com.ops.dto.DealerTO;
 import com.ops.dto.OrderTO;
+import com.ops.dto.SourceDestinationInfo;
 import com.ops.dto.TripTO;
 import com.ops.dto.WaypointTO;
 import com.ops.exceptions.ApplicationException;
@@ -128,28 +129,56 @@ public class OptimalPathManager {
 	public void prepareConstantMatrixData(DealerDeliveryTO dealerDeliveryTO) throws BusinessException, IOException, NumberFormatException, InterruptedException{
 		
 		List<OrderTO> orders = dealerDeliveryTO.getOrderList();		
-		String destinationAddresses = prepareDestinationAddresses(orders);
-		constantMatrixMap = new int[orders.size()+2][orders.size()+2];
+		List<SourceDestinationInfo> destinationAddresses = prepareDestinationAddresses(orders, 100);
+		constantMatrixMap = new int[orders.size()+2][orders.size()+2];		
+		
 		for(int i=0; i<orders.size(); i++){
-			JSONArray arr = tripService.getDistance(orders.get(i).getAddress(), destinationAddresses);
-			for(int j=0; j<orders.size(); j++){
-				int distance = arr.getJSONObject(j).getJSONObject("distance").getInt("value");
-				constantMatrixMap[orders.get(i).getMatrixIndex()][orders.get(j).getMatrixIndex()] = distance;
+			JSONArray fArr = new JSONArray();
+			Iterator<SourceDestinationInfo> itr = destinationAddresses.iterator();
+			while(itr.hasNext()){
+				SourceDestinationInfo sdiInfo = itr.next();
+				JSONArray arr = tripService.getDistance(orders.get(i).getAddress(), sdiInfo.getDestinationAddress());
+				for(int m=0; m<arr.length(); m++){
+					if(arr.getJSONObject(m).getString("status").equals("OK")){
+						fArr.put(arr.getJSONObject(m).getJSONObject("distance").getInt("value"));
+					}else{
+						fArr.put(0);
+					}
+				}
+				Thread.sleep(Integer.parseInt(new CommonUtility().getApplicationProperties("threadSleepTime")));
 			}
-			Thread.sleep(Integer.parseInt(new CommonUtility().getApplicationProperties("threadSleepTime")));			
+			
+			for(int j=0; j<orders.size(); j++){
+				int distance = fArr.getInt(j);
+				constantMatrixMap[orders.get(i).getMatrixIndex()][orders.get(j).getMatrixIndex()] = distance;
+			}						
 		}		
 	}
 	
 	public void updateAdjMatrixDataWithSourceDistances(int[][] adjMatrix, String sourceAddress, DealerDeliveryTO dealerDeliveryTO) throws BusinessException, IOException{
 		
 		List<OrderTO> orders = dealerDeliveryTO.getOrderList();	
-		String destinationAddresses = prepareDestinationAddresses(dealerDeliveryTO.getOrderList());
-		JSONArray arr = tripService.getDistance(sourceAddress, sourceAddress.concat("|"+destinationAddresses));
-			for(int i=0; i<=orders.size(); i++){				
-				int distance = arr.getJSONObject(i).getJSONObject("distance").getInt("value");
-				adjMatrix[1][i+1] = distance;
-				adjMatrix[i+1][1] = distance;
+		List<SourceDestinationInfo> destinationAddresses = prepareDestinationAddresses(dealerDeliveryTO.getOrderList(), 99);
+		
+		JSONArray fArr = new JSONArray();
+		Iterator<SourceDestinationInfo> itr = destinationAddresses.iterator();
+		while(itr.hasNext()){
+			SourceDestinationInfo sdiInfo = itr.next();
+			JSONArray arr = tripService.getDistance(sourceAddress, sourceAddress.concat("|"+sdiInfo.getDestinationAddress()));
+			for(int m=0; m<arr.length(); m++){
+				if(arr.getJSONObject(m).getString("status").equals("OK")){
+					fArr.put(arr.getJSONObject(m).getJSONObject("distance").getInt("value"));
+				}else{
+					fArr.put(0);
+				}
 			}
+		}
+		
+		for(int i=0; i<=orders.size(); i++){				
+			int distance = fArr.getInt(i);
+			adjMatrix[1][i+1] = distance;
+			adjMatrix[i+1][1] = distance;
+		}
 	}
 	
 	public int[][] prepareAdjMatrix(String sourceAddress, DealerDeliveryTO dealerDeliveryTO) throws BusinessException, IOException{
@@ -327,13 +356,45 @@ public class OptimalPathManager {
 		return dealerDeliveryTO;
 	}
 	
-	public String prepareDestinationAddresses(List<OrderTO> orders){
-		StringBuilder addressBuilder = new StringBuilder();
+	public List<SourceDestinationInfo> prepareDestinationAddresses(List<OrderTO> orders, int partitionConst){
+		List<SourceDestinationInfo> sdiList = new ArrayList<SourceDestinationInfo>();
+		
+		if(orders.size() <= partitionConst ){
+			StringBuilder addressBuilder = new StringBuilder();
 			for(int j=0; j<orders.size(); j++){
 				addressBuilder.append(orders.get(j).getAddress()).append("|");
 			}
 			addressBuilder.deleteCharAt(addressBuilder.length()-1);
-		return addressBuilder.toString();		
+			
+			SourceDestinationInfo sdi = new SourceDestinationInfo();
+			sdi.setDestinationAddress(addressBuilder.toString());
+			sdi.setSourceAddress(orders.get(0).getAddress());
+			sdiList.add(sdi);
+		} else {
+			List<List<OrderTO>> splitLists = new ArrayList<List<OrderTO>>();
+			int partitions = orders.size() / partitionConst;
+			int retFlag = 0;
+			for(int k=0; k<partitions; k++){
+				splitLists.add(orders.subList(k*partitionConst, (k+1)*partitionConst));
+				retFlag = (k+1)*partitionConst;
+			}
+			splitLists.add(orders.subList(retFlag, orders.size()));
+			
+			splitLists.forEach(splitList -> {
+				StringBuilder addressBuilder = new StringBuilder();
+				for(int j=0; j<splitList.size(); j++){
+					addressBuilder.append(splitList.get(j).getAddress()).append("|");
+				}
+				addressBuilder.deleteCharAt(addressBuilder.length()-1);
+				
+				SourceDestinationInfo sdi = new SourceDestinationInfo();
+				sdi.setDestinationAddress(addressBuilder.toString());
+				sdi.setSourceAddress(splitList.get(0).getAddress());
+				sdiList.add(sdi);
+			});
+		}
+			
+		return sdiList;		
 	}
 	
 	
