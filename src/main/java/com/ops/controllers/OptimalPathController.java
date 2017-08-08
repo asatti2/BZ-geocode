@@ -19,6 +19,7 @@ import com.ops.constants.ResultType;
 import com.ops.dto.DealerDeliveryTO;
 import com.ops.dto.ResourceTO;
 import com.ops.dto.ResponseTO;
+import com.ops.dto.TripResponseTO;
 import com.ops.dto.WaypointTO;
 import com.ops.exceptions.ApplicationException;
 import com.ops.exceptions.BusinessException;
@@ -93,7 +94,9 @@ public class OptimalPathController extends ResponseController {
 			logger.info("-- Calling Optimal Trips API --");
 			
 			ResponseTO resp = new ResponseTO();
-			resp.setResponseData(new OptimalPathManager().processTrips(dealerDeliveryTO));
+			TripResponseTO respTO = new TripResponseTO();
+			respTO.setTrips(new OptimalPathManager().processTrips(dealerDeliveryTO, respTO));
+			resp.setResponseData(respTO);
 			resp.setMessage("Minimum trips fetched successfully. !!");
 			resp.setStatus(ResultType.SUCCESS);
   

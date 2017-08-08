@@ -14,8 +14,6 @@ public class TripTO {
 	String totalTripDisplayTime;
 	Map<Integer,Double> distanceMap;
 	
-	
-	
 	public Map<Integer, Double> getDistanceMap() {
 		return distanceMap;
 	}

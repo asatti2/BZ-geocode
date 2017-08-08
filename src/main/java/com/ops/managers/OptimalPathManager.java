@@ -24,6 +24,7 @@ import com.ops.dto.DealerDeliveryTO;
 import com.ops.dto.DealerTO;
 import com.ops.dto.OrderTO;
 import com.ops.dto.SourceDestinationInfo;
+import com.ops.dto.TripResponseTO;
 import com.ops.dto.TripTO;
 import com.ops.dto.WaypointTO;
 import com.ops.exceptions.ApplicationException;
@@ -77,7 +78,7 @@ public class OptimalPathManager {
 	}
 
 	
-	public List<TripTO> processTrips(DealerDeliveryTO dealerDeliveryTO) throws BusinessException, ApplicationException, IOException, NumberFormatException, InterruptedException {
+	public List<TripTO> processTrips(DealerDeliveryTO dealerDeliveryTO, TripResponseTO respTO) throws BusinessException, ApplicationException, IOException, NumberFormatException, InterruptedException {
 		logger.info("Request recieved to fetch trips...");
 		validateDealersOrdersIds(dealerDeliveryTO);
 		originalDealersPool = dealerDeliveryTO.getDealerList();
@@ -91,6 +92,7 @@ public class OptimalPathManager {
 			});
 			System.out.println("================================");
 		});
+		respTO.setDistanceMatrixMap(constantMatrixMap);
 		return generatedTripsList;
 	}
 	
