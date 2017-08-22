@@ -342,9 +342,9 @@ public class TripMgmtService {
 			for (int m = 0; m < waypointsOrders.length(); m++) {
 				sortedOrdersList.add(ordersList.get(waypointsOrders.getInt(m)));
 			}
-			if (sortedOrdersList.size() > 1) {
-				sortedOrdersList.add(ordersList.get(ordersList.size() - 1));
-			}
+			/*if (sortedOrdersList.size() > 1) {
+				sortedOrdersList.add(ordersList.get(waypointsOrders.getInt(0)));
+			}*/
 			tripWaypoints.setOrdersList(sortedOrdersList);
 		}
 	}
