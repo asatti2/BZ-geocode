@@ -33,6 +33,22 @@ public class TripMgmtService {
 
 	private static final Logger logger = LoggerFactory.getLogger(TripMgmtService.class);
 	private String dealerLastPointAddress = null;
+	
+	
+	public boolean isJSONValid(String reqStr) {
+	    try {
+	        new JSONObject(reqStr);
+	    } catch (JSONException ex) {
+	        // edited, to include @Arthur's comment
+	        // e.g. in case JSONArray is valid as well...
+	        try {
+	            new JSONArray(reqStr);
+	        } catch (JSONException ex1) {
+	            return false;
+	        }
+	    }
+	    return true;
+	}
 
 	private String getOptimalRoute(WaypointTO waypointTO) throws BusinessException, IOException {
 
@@ -44,12 +60,15 @@ public class TripMgmtService {
 		waypointTO.getWaypoints().forEach(waypoint -> paramBuilder.append("|").append(waypoint));
 
 		String resp = HttpConnectorUtil.callAPI(URLConstants.WAYPOINT_URL, paramBuilder.toString());
-
-		JSONObject jsonObj = new JSONObject(resp);
-		if (!"OK".equals(jsonObj.get("status").toString())) {
-			throw new BusinessException(analyzeStatusCode(jsonObj.get("status").toString()));
+		
+		if(isJSONValid(resp)){		
+			JSONObject jsonObj = new JSONObject(resp);
+			if (!"OK".equals(jsonObj.get("status").toString())) {
+				throw new BusinessException(analyzeStatusCode(jsonObj.get("status").toString()));
+			}
+		} else {
+			throw new BusinessException(ApplicationConstants.RESP_ERROR);
 		}
-
 		return resp;
 	}
 	
@@ -63,10 +82,14 @@ public class TripMgmtService {
 					.append("&avoid=highways");
 		
 		String resp = HttpConnectorUtil.callAPI(URLConstants.DISTANCE_MATRIX_URL, paramBuilder.toString());
-		
-		JSONObject jsonObj = new JSONObject(resp);
-		if (!"OK".equals(jsonObj.get("status").toString())) {
-			throw new BusinessException(analyzeStatusCode(jsonObj.get("status").toString()));
+		JSONObject jsonObj = null;
+		if(isJSONValid(resp)){
+			jsonObj = new JSONObject(resp);
+			if (!"OK".equals(jsonObj.get("status").toString())) {
+				throw new BusinessException(analyzeStatusCode(jsonObj.get("status").toString()));
+			}
+		} else { 
+			throw new BusinessException(ApplicationConstants.RESP_ERROR);
 		}
 		
 		return jsonObj.getJSONArray("rows").getJSONObject(0).getJSONArray("elements");
@@ -328,7 +351,7 @@ public class TripMgmtService {
 			waypointTo.setOrigin(endLoc.getDouble("lat") + "," + endLoc.getDouble("lng"));
 			waypointTo.setDestination(endLoc.getDouble("lat") + "," + endLoc.getDouble("lng"));
 			wayPointsList = new ArrayList<String>();
-			for (int i = 0; i < ordersList.size() - 1; i++) {
+			for (int i = 0; i <= ordersList.size() - 1; i++) {
 				wayPointsList.add(ordersList.get(i).getAddress());
 			}
 			if (wayPointsList.isEmpty()) {

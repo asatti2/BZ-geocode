@@ -69,11 +69,12 @@ public class OptimalPathManager {
 
 		String resp = HttpConnectorUtil.callAPI(URLConstants.WAYPOINT_URL, paramBuilder.toString());
 		
-		JSONObject jsonObj = new JSONObject(resp);
-		if (!"OK".equals(jsonObj.get("status").toString())) {
-			throw new BusinessException(new TripMgmtService().analyzeStatusCode(jsonObj.get("status").toString()));
+		if(new TripMgmtService().isJSONValid(resp)){
+			JSONObject jsonObj = new JSONObject(resp);
+			if (!"OK".equals(jsonObj.get("status").toString())) {
+				throw new BusinessException(new TripMgmtService().analyzeStatusCode(jsonObj.get("status").toString()));
+			}
 		}
-
 		return resp;
 	}
 

@@ -9,7 +9,7 @@ public interface ApplicationConstants {
 	String COST_CALCULATE_URL = "/costCalculate";
 	String OPTIMAL_PATH = "/optimalTrips";
 
-	String RESP_ERROR = "resp.error";
+	String RESP_ERROR = "application.exception";
 	String INCORRECT_ADDRESS = "incorrect.address";
 	String NOT_FOUND = "address.not.geocoded";
 	String ZERO_RESULTS = "no.route.found";
