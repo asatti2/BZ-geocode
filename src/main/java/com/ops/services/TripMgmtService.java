@@ -312,7 +312,7 @@ public class TripMgmtService {
 		return Collections.min(orderValuesList);
 	}
 
-	public void generateTripRoute(TripTO tripWaypoints) throws JSONException, BusinessException, InterruptedException, IOException {
+	public void generateTripRoute(TripTO tripWaypoints, int[][] constantMatrixMap) throws JSONException, BusinessException, InterruptedException, IOException {
 
 		List<String> finalRouteData = new LinkedList<String>();
 		List<DealerTO> dealersList = tripWaypoints.getDealersList();
@@ -343,7 +343,9 @@ public class TripMgmtService {
 		String sourceAddress = endLoc.getDouble("lat") + "," + endLoc.getDouble("lng");
 		
 		if(tripWaypoints.getOrdersList().size() > 22) {
-			DealerDeliveryTO to = new OptimalPathManager().processDijakstra(sourceAddress, tripWaypoints.getOrdersList());
+			OptimalPathManager manager = new OptimalPathManager();
+			manager.setConstantMatrixMap(constantMatrixMap);			
+			DealerDeliveryTO to = manager.processDijakstra(sourceAddress, tripWaypoints.getOrdersList());
 			tripWaypoints.setOrdersList(to.getOrderList());
 			tripWaypoints.setInterDeliveryPointDistance(to.getOrderTripDistance());
 		} else {
@@ -372,12 +374,12 @@ public class TripMgmtService {
 		}
 	}
 
-	public void generateTripRoutes(List<TripTO> generatedTripsList) throws BusinessException {
+	public void generateTripRoutes(List<TripTO> generatedTripsList, int[][] constantMatrixMap) throws BusinessException {
 		generatedTripsList.forEach(generatedTrip -> {
 			try {
 				try {
 					try {
-						new TripMgmtService().generateTripRoute(generatedTrip);
+						new TripMgmtService().generateTripRoute(generatedTrip, constantMatrixMap);
 					} catch (IOException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();

@@ -52,7 +52,11 @@ public class OptimalPathManager {
 	int updatedAdjacencyMatrix[][] ;
 	int constantMatrixMap[][];
 	List<Integer> removedIndixes = new ArrayList<Integer>();
-	
+
+	public void setConstantMatrixMap(int[][] constantMatrixMap) {
+		this.constantMatrixMap = constantMatrixMap;
+	}
+
 	
 	public String getWaypointLocation(WaypointTO waypointTO) throws BusinessException, IOException {
 		logger.info("waypointTO - " + waypointTO);
@@ -86,7 +90,7 @@ public class OptimalPathManager {
 		updateOrdersPoolWithIndexes(dealerDeliveryTO.getOrderList());
 		prepareConstantMatrixData(dealerDeliveryTO);
 		getOptimizedTrips(dealerDeliveryTO);
-		tripService.generateTripRoutes(generatedTripsList);
+		tripService.generateTripRoutes(generatedTripsList, constantMatrixMap);
 		generatedTripsList.forEach(generatedTrip->{
 			generatedTrip.getOrdersList().forEach(order ->{
 				System.out.println(order.getAddress());
@@ -355,7 +359,8 @@ public class OptimalPathManager {
 		dealerDeliveryTO.setOrderList(orders);
 		if(masterOrdersMap.isEmpty()){
 			prepareMasterOrdersMap(dealerDeliveryTO);
-		}		processDijakstra(sourceAddress, dealerDeliveryTO);
+		}		
+		processDijakstra(sourceAddress, dealerDeliveryTO);
 		return dealerDeliveryTO;
 	}
 	
