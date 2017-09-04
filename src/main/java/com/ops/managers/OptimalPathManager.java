@@ -51,6 +51,7 @@ public class OptimalPathManager {
 	private Map<Integer, Integer> masterOrdersMap =  new HashMap<Integer,Integer>();
 	int updatedAdjacencyMatrix[][] ;
 	int constantMatrixMap[][];
+	String displayAddressConstantDistanceMatrixMap[][];
 	List<Integer> removedIndixes = new ArrayList<Integer>();
 
 	public void setConstantMatrixMap(int[][] constantMatrixMap) {
@@ -97,7 +98,7 @@ public class OptimalPathManager {
 			});
 			System.out.println("================================");
 		});
-		respTO.setDistanceMatrixMap(constantMatrixMap);
+		respTO.setDistanceMatrixMap(displayAddressConstantDistanceMatrixMap);
 		return generatedTripsList;
 	}
 	
@@ -137,7 +138,8 @@ public class OptimalPathManager {
 		
 		List<OrderTO> orders = dealerDeliveryTO.getOrderList();		
 		List<SourceDestinationInfo> destinationAddresses = prepareDestinationAddresses(orders, 100);
-		constantMatrixMap = new int[orders.size()+2][orders.size()+2];		
+		constantMatrixMap = new int[orders.size()+2][orders.size()+2];
+		displayAddressConstantDistanceMatrixMap = new String[orders.size()+2][orders.size()+2];		
 		
 		for(int i=0; i<orders.size(); i++){
 			JSONArray fArr = new JSONArray();
@@ -158,6 +160,14 @@ public class OptimalPathManager {
 			for(int j=0; j<orders.size(); j++){
 				int distance = fArr.getInt(j);
 				constantMatrixMap[orders.get(i).getMatrixIndex()][orders.get(j).getMatrixIndex()] = distance;
+				
+				StringBuilder sb =  new StringBuilder();
+				sb.append("( ");				
+				sb.append(orders.get(i).getAddress()).append("---");
+				sb.append(orders.get(j).getAddress()).append(" = ");
+				sb.append(distance).append(" ) ");
+				
+				displayAddressConstantDistanceMatrixMap[orders.get(i).getMatrixIndex()][orders.get(j).getMatrixIndex()] = sb.toString();
 			}						
 		}		
 	}

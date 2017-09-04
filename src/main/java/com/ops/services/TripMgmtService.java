@@ -347,7 +347,7 @@ public class TripMgmtService {
 			manager.setConstantMatrixMap(constantMatrixMap);			
 			DealerDeliveryTO to = manager.processDijakstra(sourceAddress, tripWaypoints.getOrdersList());
 			tripWaypoints.setOrdersList(to.getOrderList());
-			tripWaypoints.setInterDeliveryPointDistance(to.getOrderTripDistance());
+			tripWaypoints.setInterDeliveryPointDistance(to.getOrderTripDistance()/1000);
 		} else {
 			waypointTo = new WaypointTO();
 			waypointTo.setOrigin(endLoc.getDouble("lat") + "," + endLoc.getDouble("lng"));
