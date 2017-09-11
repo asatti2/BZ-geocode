@@ -27,12 +27,16 @@ import com.ops.dto.WaypointTO;
 import com.ops.exceptions.BusinessException;
 import com.ops.managers.OptimalPathManager;
 import com.ops.utils.CommonUtility;
+import com.ops.utils.GoogleMatrixRequest;
 import com.ops.utils.HttpConnectorUtil;
+import com.squareup.okhttp.OkHttpClient;
 
 public class TripMgmtService {
 
 	private static final Logger logger = LoggerFactory.getLogger(TripMgmtService.class);
 	private String dealerLastPointAddress = null;
+	
+	OkHttpClient client = new OkHttpClient();
 	
 	
 	public boolean isJSONValid(String reqStr) {
@@ -81,7 +85,8 @@ public class TripMgmtService {
 					.append("&key=").append(new CommonUtility().getApplicationProperties("geoKeyForDistance"))
 					.append("&avoid=highways");
 		
-		String resp = HttpConnectorUtil.callAPI(URLConstants.DISTANCE_MATRIX_URL, paramBuilder.toString());
+		//String resp = HttpConnectorUtil.callAPI(URLConstants.DISTANCE_MATRIX_URL, paramBuilder.toString());
+		String resp = GoogleMatrixRequest.callAPI(URLConstants.DISTANCE_MATRIX_URL, paramBuilder.toString(), client);
 		JSONObject jsonObj = null;
 		if(isJSONValid(resp)){
 			jsonObj = new JSONObject(resp);
@@ -227,7 +232,11 @@ public class TripMgmtService {
 		
 		List<OrderTO> ordersToBeRemoved  = fetchOrdersOfSameDistance(minValOrderObj, ordersList, masterOrderMatrix, masterOrdersMap, removedIndixes);
 		System.out.println("ORDERREMOVEDLISTSIZE#"+ordersToBeRemoved.size());
-		ordersList.removeAll(ordersToBeRemoved);
+		if(ordersToBeRemoved.size() <  ordersList.size()){
+			ordersList.removeAll(ordersToBeRemoved);
+		} else {
+			ordersList.remove(ordersToBeRemoved.get(ordersToBeRemoved.size()-1));
+		}
 		dataDto.setOrderList(ordersList);		
 		removedOrdersPool.addAll(ordersToBeRemoved);
 		masterOrdersMap.clear();

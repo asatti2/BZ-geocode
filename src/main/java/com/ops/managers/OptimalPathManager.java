@@ -172,7 +172,7 @@ public class OptimalPathManager {
 		}		
 	}
 	
-	public void updateAdjMatrixDataWithSourceDistances(int[][] adjMatrix, String sourceAddress, DealerDeliveryTO dealerDeliveryTO) throws BusinessException, IOException{
+	public void updateAdjMatrixDataWithSourceDistances(int[][] adjMatrix, String sourceAddress, DealerDeliveryTO dealerDeliveryTO) throws BusinessException, IOException, NumberFormatException, InterruptedException{
 		
 		List<OrderTO> orders = dealerDeliveryTO.getOrderList();	
 		List<SourceDestinationInfo> destinationAddresses = prepareDestinationAddresses(dealerDeliveryTO.getOrderList(), 99);
@@ -189,6 +189,7 @@ public class OptimalPathManager {
 					fArr.put(0);
 				}
 			}
+			Thread.sleep(Integer.parseInt(new CommonUtility().getApplicationProperties("threadSleepTime")));
 		}
 		
 		for(int i=0; i<=orders.size(); i++){				
@@ -196,9 +197,10 @@ public class OptimalPathManager {
 			adjMatrix[1][i+1] = distance;
 			adjMatrix[i+1][1] = distance;
 		}
+		
 	}
 	
-	public int[][] prepareAdjMatrix(String sourceAddress, DealerDeliveryTO dealerDeliveryTO) throws BusinessException, IOException{
+	public int[][] prepareAdjMatrix(String sourceAddress, DealerDeliveryTO dealerDeliveryTO) throws BusinessException, IOException, NumberFormatException, InterruptedException{
 		List<OrderTO> orders = dealerDeliveryTO.getOrderList();
 		int adjMatrix[][] = new int[orders.size()+2][orders.size()+2];
 		for(int i=0; i<orders.size(); i++){

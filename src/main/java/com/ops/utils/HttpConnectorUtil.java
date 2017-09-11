@@ -17,9 +17,10 @@ public class HttpConnectorUtil {
 		logger.info("URL - "+url+" | Params - "+params);
 
 		StringBuffer response = new StringBuffer();
+		HttpURLConnection con = null;
 		try {
 			httpUrl = new URL(url+"?"+params);
-			HttpURLConnection con = (HttpURLConnection) httpUrl.openConnection();
+			con = (HttpURLConnection) httpUrl.openConnection();
 			con.setRequestMethod("GET");
 			con.setRequestProperty("User-Agent", "Mozilla/5.0");
 			int responseCode = con.getResponseCode();
@@ -31,7 +32,9 @@ public class HttpConnectorUtil {
 			}
 			in.close();
 		} catch(Exception ex) {
-			System.out.println(ex.getMessage());
+			ex.printStackTrace();
+		}finally {
+			con.disconnect();
 		}
 
 		return response.toString();
